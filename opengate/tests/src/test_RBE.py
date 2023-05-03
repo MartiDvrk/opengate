@@ -85,6 +85,7 @@ dose.size = [100, 100, 1500]
 dose.spacing = [1, 1, 0.2]
 dose.dose_average = True
 dose.hit_type = "random"
+dose.model = "mkm"
 
 
 # add stat actor
