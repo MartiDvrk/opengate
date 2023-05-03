@@ -57,6 +57,9 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         user_info.r_d = 0
         user_info.alpha_0 = 0
         user_info.beta = 0
+        user_info.alpha_reference = 0.764
+        user_info.beta_reference = 0.0615
+        user_info.fclin = 2.41
 
     def store_lookup_table(self, table_path):
         with open(table_path, "r") as f:

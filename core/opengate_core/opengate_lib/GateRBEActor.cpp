@@ -154,11 +154,14 @@ void GateRBEActor::SteppingAction(G4Step *step) {
     /*auto dedx_currstep =
         emcalc->ComputeElectronicDEDX(energy, p, current_material, dedx_cut) /
         CLHEP::MeV * CLHEP::mm;*/
-	auto charge = int(p->GetPDGCharge());
-	auto table_value = GetValue(charge, energy/12); //energy has unit?
+	auto charge = int(p->GetAtomicNumber());
+	auto mass = int(p->GetAtomicMass());
+	auto table_value = GetValue(charge, energy/mass); //energy has unit?
 	auto alpha_currstep = fAlpha0 + fBeta*table_value;
-
-    std::cout << "Charge: " << charge << ", energy: " << energy/12 << ", z*_1D: " << table_value << std::endl;
+	
+	std::cout<< "energy:" << energy << ", mass: " << mass << std::endl;
+    std::cout << "Charge: " << charge << ", energy/mass: " << energy/mass << std::endl;
+    std::cout <<"z*_1D: " << table_value << ", alpha_step: " << alpha_currstep<< std::endl;
 
 
     //auto steplength = step->GetStepLength() / CLHEP::mm;
@@ -206,19 +209,20 @@ void GateRBEActor::CreateLookupTable(py::dict &user_info) {
 }
 
 double GateRBEActor::GetValue(int Z, float energy) {
+	std::cout << "GetValue: Z: " << Z << ", energy[MeV/u]: " << energy << std::endl;
   // initalize value
   G4double y = 0;
   // get table values for the given Z
-  if (Z > 6 ){
-	  std::cout<< "Particle Z>6" << std::endl;
+  if (Z > 6 || Z < 1 ){
 	  return 0;}
-	  
   G4DataVector *data = (*table)[Z - 1];
   // find the index of the lower bound energy to the given energy
   size_t bin = FindLowerBound(energy, energies);
+  std::cout << "interpolation bin: " << bin << std::endl;
   G4LinInterpolation linearAlgo;
   // get table value for the given energy
   y = linearAlgo.Calculate(energy, bin, *energies, *data);
+  std::cout<<"interpolation output:" << y << std::endl;
 
   return y;
 }
@@ -226,16 +230,19 @@ double GateRBEActor::GetValue(int Z, float energy) {
 size_t GateRBEActor::FindLowerBound(G4double x, G4DataVector *values) const {
   size_t lowerBound = 0;
   size_t upperBound(values->size() - 1);
-
+  if (x < (*values)[0]){
+	return 0;}
+  if (x > (*values).back()){
+	return values->size() - 1;}
   while (lowerBound <= upperBound) {
     size_t midBin((lowerBound + upperBound) / 2);
-
+    std::cout<<"upper: "<<upperBound<<" lower: "<<lowerBound<<std::endl;
+    std::cout<<(*values)[midBin]<<std::endl;
     if (x < (*values)[midBin])
       upperBound = midBin - 1;
     else
-      lowerBound = midBin + 1;
+     lowerBound = midBin + 1;
   }
-
   return upperBound;
 }
 

@@ -104,6 +104,8 @@ void GateLETActor::SteppingAction(G4Step *step) {
     // TODO auto lock
     // G4AutoLock mutex(&SetPixelMutex);
     
+    auto event_id =
+          G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
     std::cout<<"Event ID: " << event_id << std::endl;
 
     // get edep in MeV (take weight into account)

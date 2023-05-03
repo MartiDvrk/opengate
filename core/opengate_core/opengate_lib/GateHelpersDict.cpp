@@ -9,7 +9,7 @@
 #include "GateHelpers.h"
 
 G4DataVector *VectorToG4DataVector(std::vector<double> data) {
-  G4DataVector *vec = new G4DataVector(data.size());
+  G4DataVector *vec = new G4DataVector(); //data.size()
   for (int i = 0; i < data.size(); i++) {
     vec->insertAt(i, data[i]);
   }
