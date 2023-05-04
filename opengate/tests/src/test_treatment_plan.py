@@ -36,6 +36,7 @@ Bq = gate.g4_units("Bq")
 nm = gate.g4_units("nm")
 deg = gate.g4_units("deg")
 rad = gate.g4_units("rad")
+gcm3 = gate.g4_units("g/cm3")
 
 # add a material database
 sim.add_material_database(paths.gate_data / "HFMaterials2014.db")
@@ -80,35 +81,41 @@ nozzle.size = [500 * mm, 500 * mm, 2 * mm]
 nozzle.material = "G4_WATER"
 
 # treatment info
-rt_plan_path = "/home/aresch/Data/07_TEDD_test_cases/01_HRP_test/RP1.2.752.243.1.1.20230414101102666.1900.76618.dcm"
-# rt_plan_path = "/home/ideal/0_Data/02_ref_RTPlans/01_ref_Plans_CT_RTpl_RTs_RTd/02_2DOptics/01_noRaShi/01_HBL/E120MeVu/RP1.2.752.243.1.1.20220202141407926.4000.48815_tagman.dcm"
+# rt_plan_path = "/home/fava/Data/01_test_cases/01_grid_positioning/b1_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428151936450.4400.26621.dcm"
+rt_plan_path = "/home/ideal/0_Data/02_ref_RTPlans/01_ref_Plans_CT_RTpl_RTs_RTd/02_2DOptics/01_noRaShi/01_HBL/E120MeVu/RP1.2.752.243.1.1.20220202141407926.4000.48815_tagman.dcm"
 treatment = gate.radiation_treatment(rt_plan_path, clinical=False)
-# structs = treatment.structures
+structs = treatment.structures
 beamset = treatment.beamset_info
 doses = treatment.rt_doses
 ct_image = treatment.ct_image
 mhd_ct = str(ref_path / "absolute_dose_ct.mhd")
 ct_image.write_to_file(mhd_ct)
 
-print(doses.keys())
-exit()
-# # container
-# phantom = sim.add_volume("Box", "phantom")
-# phantom.size = [500 * mm, 500 * mm, 400 * mm]
-# phantom.rotation = Rotation.from_euler("y", 90, degrees=True).as_matrix()
-# phantom.translation = [-200.0, 0.0, 0]
-# phantom.material = "G4_WATER"
-# phantom.color = [0, 0, 1, 1]
+# get transl and rot for correct ct positioning
+iso = np.array(beamset.beams[0].IsoCenter)
+couch_rot = beamset.beams[0].gantry_angle
+
+# container
+phantom = sim.add_volume("Box", "phantom")
+phantom.size = [800 * mm, 800 * mm, 800 * mm]
+phantom.rotation = Rotation.from_euler("y", -couch_rot, degrees=True).as_matrix()
+# phantom.translation = list(-iso)
+phantom.material = "G4_AIR"
+phantom.color = [0, 0, 1, 1]
 
 # patient
 patient = sim.add_volume("Image", "patient")
 patient.image = mhd_ct
-# patient.mother = phantom.name
+patient.mother = phantom.name
 patient.material = "G4_AIR"  # material used by default
-patient.voxel_materials = [
-    [-1024, -300, "G4_AIR"],
-    [-300, 3000, "G4_WATER"],
-]
+# patient.voxel_materials = [
+#     [-1024, -300, "G4_AIR"],
+#     [-300, 3000, "G4_WATER"],
+# ]
+f1 = "/home/fava/opengate/opengate/data/Schneider2000MaterialsTable.txt"
+f2 = "/home/fava/opengate/opengate/data/Schneider2000DensitiesTable.txt"
+tol = 0.05 * gcm3
+patient.voxel_materials, materials = gate.HounsfieldUnit_to_material(tol, f1, f2)
 patient.dump_label_image = ref_path / "test_ct_label.mhd"
 
 # physics
@@ -135,16 +142,16 @@ tps.set_particles_to_simulate(nSim)
 tps.set_spots_from_rtplan(rt_plan_path)
 tps.initialize_tpsource()
 
-# # add stat actor
-# s = sim.add_actor("SimulationStatisticsActor", "Stats")
-# s.track_types_flag = True
-# # start simulation
-# output = sim.start()
+# add stat actor
+s = sim.add_actor("SimulationStatisticsActor", "Stats")
+s.track_types_flag = True
+# start simulation
+output = sim.start()
 
-# ## -------------END SCANNING------------- ##
-# # print results at the end
-# stat = output.get_actor("Stats")
-# print(stat)
+## -------------END SCANNING------------- ##
+# print results at the end
+stat = output.get_actor("Stats")
+print(stat)
 
 ## ------ TESTS -------##
 dose_path = gate.scale_dose(
@@ -172,7 +179,7 @@ gate.plot_img_axis(ax, img_mhd_out, "y profile", axis="y")
 gate.plot_img_axis(ax, img_mhd_out, "z profile", axis="z")
 
 plt.show()
-# fig.savefig(output_path / "dose_profiles_water.png")
+fig.savefig(output_path / "dose_profiles_CT.png")
 
 
 # gate.test_ok(ok)
