@@ -80,6 +80,11 @@ class ct_image_base:
         itk.imwrite(self._img, mhd)
 
 
+class ct_image_from_mhd(ct_image_base):
+    def __init__(self, img):
+        self._img = img
+
+
 class ct_image_from_dicom(ct_image_base):
     def __init__(self, flist, uid):
         print(

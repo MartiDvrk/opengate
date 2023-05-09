@@ -371,9 +371,9 @@ class beamset_info(object):
         "FinalCumulativeMetersetWeight",
         "BeamName",
         "RadiationType",
-        "RadiationAtomicNumber",
-        "RadiationMassNumber",
-        "RadiationChargeState",
+        # "RadiationAtomicNumber",
+        # "RadiationMassNumber",
+        # "RadiationChargeState",
         "TreatmentMachineName",
         "NumberOfRangeModulators",
         "NumberOfRangeShifters",
@@ -525,12 +525,12 @@ class beamset_info(object):
         else:
             print("\033[92mRP file ok \033[0m")
 
-        if hasattr(self._rp, "DoseReferenceSequence"):
-            sequence_check(self._rp, "DoseReferenceSequence", 1, 1)
-            if hasattr(self._rp.DoseReferenceSequence[0], "ReferencedROINumber"):
-                self._dose_roinumber = int(
-                    self._rp.DoseReferenceSequence[0].ReferencedROINumber
-                )
+        # if hasattr(self._rp, "DoseReferenceSequence"):
+        #     sequence_check(self._rp, "DoseReferenceSequence", 1, 1)
+        #     if hasattr(self._rp.DoseReferenceSequence[0], "ReferencedROINumber"):
+        #         self._dose_roinumber = int(
+        #             self._rp.DoseReferenceSequence[0].ReferencedROINumber
+        #         )
         if self._dose_roinumber is None:
             print(
                 "no target ROI specified (probably because of missing DoseReferenceSequence)"

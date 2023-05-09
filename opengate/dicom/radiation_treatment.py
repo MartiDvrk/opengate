@@ -1,12 +1,7 @@
-# from impl.beamline_model import beamline_model
-# from impl.hlut_conf import hlut_conf
 import os
 import opengate as gate
-
-# import rt_dose as rd
-# import rt_plan as rp
-# import rt_structs as rs
-# import ct_image as ct
+import itk
+import numpy as np
 
 
 class radiation_treatment:
@@ -33,15 +28,14 @@ class radiation_treatment:
         print("----------------------------")
         print("Get RS file")
         self.ss_ref_uid = self.beamset_info.structure_set_uid
-        rs_data, rs_path = gate.get_RS_file(self.dcm_dir, self.ss_ref_uid)
-        gate.check_RS(rs_data)
-        self.structures = rs_data
+        self.structures = gate.RT_structs(self.dcm_dir, self.ss_ref_uid)
+        self.structures_dcm = self.structures.structure_set
 
         # CT
         print("----------------------------")
         print("Get CT files")
         self.ctuid = (
-            self.structures.ReferencedFrameOfReferenceSequence[0]
+            self.structures_dcm.ReferencedFrameOfReferenceSequence[0]
             .RTReferencedStudySequence[0]
             .RTReferencedSeriesSequence[0]
             .SeriesInstanceUID
@@ -49,3 +43,51 @@ class radiation_treatment:
 
         _, ct_files = gate.get_series_filenames(self.dcm_dir, self.ctuid)
         self.ct_image = gate.ct_image_from_dicom(ct_files, self.ctuid)
+
+    def preprocess_ct(self):
+        ct_orig = self.ct_image.img
+        ct_array = self.ct_image.array
+
+        # dose grid info
+        plan_dose = self.rt_doses["PLAN"]
+        dose_grid_center = plan_dose.center
+        dose_grid_size = plan_dose.nvoxels * plan_dose.spacing
+
+        # overriding voxels outside external ROI with G4_AIR
+        ext_roi = gate.region_of_interest(
+            ds=self.structures_dcm, roi_id=self.structures.external
+        )
+        ext_mask = ext_roi.get_mask(ct_orig, corrected=False)
+        ext_array = itk.GetArrayViewFromImage(ext_mask) > 0
+        ct_array[np.logical_not(ext_array)] = -1000  # hu_air
+        ct_hu_overrides = itk.GetImageFromArray(ct_array)
+        ct_hu_overrides.CopyInformation(ct_orig)
+
+        # crop CT
+        bb_ct = gate.bounding_box(img=ct_hu_overrides)
+        bb_dose = gate.bounding_box(
+            xyz=np.stack(
+                (
+                    dose_grid_center - 0.5 * dose_grid_size,
+                    dose_grid_center + 0.5 * dose_grid_size,
+                )
+            )
+        )
+        ct_padded = ct_hu_overrides
+        if not bb_dose in bb_ct:
+            print("dose matrix IS NOT contained in original CT! adding dose padding")
+            bb_dose_padding = gate.bounding_box(bb=bb_ct)
+            bb_dose_padding.merge(bb_dose)
+            # ibbmin = np.array(ct_hu_overrides.TransformPhysicalPointToIndex(bb_dose_padding.mincorner))
+            # ibbmax = np.array(ct_hu_overrides.TransformPhysicalPointToIndex(bb_dose_padding.maxcorner))+1
+            ibbmin, ibbmax = bb_dose_padding.indices_in_image(ct_hu_overrides)
+            ct_padded = gate.crop_and_pad_image(
+                ct_hu_overrides, ibbmin, ibbmax, -1000
+            )  # "air" padding
+        # ibbmin,ibbmax = bb_ct.indices_in_image(ct_padded)
+        # ct_cropped = gate.crop_and_pad_image(ct_padded,ibbmin,ibbmax,-100) # "air" padding
+        ct_cropped = ct_padded
+        # new ct grid
+        preprocessed_ct = gate.ct_image_from_mhd(ct_cropped)
+
+        return preprocessed_ct

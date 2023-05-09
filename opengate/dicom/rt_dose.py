@@ -55,6 +55,10 @@ class dose_info(object):
         )
 
     @property
+    def center(self):
+        return self.origin - 0.5 * self.spacing + 0.5 * self.nvoxels
+
+    @property
     def nvoxels(self):
         return np.array(self._rd.pixel_array.shape[::-1])
 

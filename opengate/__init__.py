@@ -75,3 +75,4 @@ from .dicom.rt_structs import *
 from .dicom.ct_image import *
 from .dicom.radiation_treatment import *
 from .dicom.helpers_dcm import *
+from .dicom.roi_utils import *
