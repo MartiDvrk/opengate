@@ -3,11 +3,12 @@ import itk
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import RegularGridInterpolator
 
 
-def main():
+def main(rt_plan_path):
     ## ------ INITIALIZE SIMULATION ENVIRONMENT ---------- ##
     paths = gate.get_default_test_paths(__file__, "gate_test044_pbs")
     output_path = paths.output / "output_test051_rtp"
@@ -37,6 +38,18 @@ def main():
     # add a material database
     sim.add_material_database(paths.gate_data / "HFMaterials2014.db")
 
+    # treatment info
+    treatment = gate.radiation_treatment(rt_plan_path, clinical=False)
+    structs = treatment.structures
+    beamset = treatment.beamset_info
+    doses = treatment.rt_doses
+    ct_image = treatment.ct_image
+    gantry_angle = float(beamset.beam_angles[0])
+
+    # dose grid info
+    plan_dose = doses["PLAN"]
+    plan_dose_image = plan_dose.image
+
     ## Beamline model
     IR2HBL = gate.BeamlineModel()
     IR2HBL.name = None
@@ -64,8 +77,14 @@ def main():
     # nozzle box
     box = sim.add_volume("Box", "box")
     box.size = [500 * mm, 500 * mm, 1000 * mm]
-    box.translation = [1148 * mm, 0.0, 0.0]
-    box.rotation = Rotation.from_euler("y", -90, degrees=True).as_matrix()
+    box.rotation = (
+        Rotation.from_euler("z", gantry_angle, degrees=True)
+        * Rotation.from_euler("x", -90, degrees=True)
+    ).as_matrix()
+    if gantry_angle == 0:
+        box.translation = [0 * mm, -1148 * mm, 0 * mm]  # [1148 *mm, 0 * mm, 0 * mm]
+    elif gantry_angle == 90:
+        box.translation = [1148 * mm, 0 * mm, 0 * mm]
     box.material = "Vacuum"
     box.color = [0, 0, 1, 1]
 
@@ -78,24 +97,6 @@ def main():
     # lookup tables
     hu_material = "/home/fava/opengate/opengate/data/Schneider2000MaterialsTable.txt"
     hu_density = "/home/fava/opengate/opengate/data/Schneider2000DensitiesTable.txt"
-
-    # treatment info
-    p1 = "/home/fava/Data/01_test_cases/01_grid_positioning/b1_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428151936450.4400.26621.dcm"
-    p2 = "/home/fava/Data/01_test_cases/01_grid_positioning/b2_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428154753423.9300.11775.dcm"
-    p3 = "/home/fava/Data/01_test_cases/01_grid_positioning/b3_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428154719788.8800.64410.dcm"
-    p4 = "/home/fava/Data/01_test_cases/01_grid_positioning/b4_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428155338172.1090.56387.dcm"
-    p5 = "/home/fava/Data/01_test_cases/01_grid_positioning/b5_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428165759233.1290.41271.dcm"
-    rt_plan_path = p2
-
-    treatment = gate.radiation_treatment(rt_plan_path, clinical=False)
-    structs = treatment.structures
-    beamset = treatment.beamset_info
-    doses = treatment.rt_doses
-    ct_image = treatment.ct_image
-
-    # dose grid info
-    plan_dose = doses["PLAN"]
-    plan_dose_image = plan_dose.image
 
     # preprocessing
     preprocessed_ct = treatment.preprocess_ct()
@@ -114,11 +115,12 @@ def main():
 
     # container
     phantom = sim.add_volume("Box", "phantom")
-    phantom.size = [600 * mm, 600 * mm, 600 * mm]
-    phantom.translation = list((img_origin - origin_when_centered) - iso)
+    phantom.size = treatment.get_container_size()
+    # phantom.translation = list((img_origin - origin_when_centered) - iso)
     phantom.rotation = Rotation.from_euler("y", -couch_rot, degrees=True).as_matrix()
     phantom.material = "G4_AIR"
     phantom.color = [0, 0, 1, 1]
+    print(f"{iso = }")
     print(f"{phantom.translation = }")
     print(f"{couch_rot = }")
 
@@ -126,6 +128,7 @@ def main():
     patient = sim.add_volume("Image", "patient")
     patient.image = mhd_ct_path
     patient.mother = phantom.name
+    patient.translation = list((img_origin - origin_when_centered) - iso)
     patient.material = "G4_AIR"  # material used by default
     # patient.voxel_materials = [
     #     [-1024, -300, "G4_AIR"],
@@ -153,7 +156,7 @@ def main():
 
     ## source
     nplan = treatment.beamset_info.mswtot
-    nSim = 2000  # 328935  # particles to simulate per beam
+    nSim = 20000  # 328935  # particles to simulate per beam
     tps = gate.TreatmentPlanSource("RT_plan", sim)
     tps.set_beamline_model(IR2HBL)
     tps.set_particles_to_simulate(nSim)
@@ -161,7 +164,7 @@ def main():
     tps.initialize_tpsource()
 
     # start simulation
-    run_simulation = False
+    run_simulation = True
     if run_simulation:
         # add stat actor
         s = sim.add_actor("SimulationStatisticsActor", "Stats")
@@ -223,21 +226,21 @@ def main():
 
     # 1D
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
-    gate.plot_img_axis(ax, dose_resampled, "x sim", axis="x")
-    gate.plot_img_axis(ax, dose_resampled, "y sim", axis="y")
-    gate.plot_img_axis(ax, dose_resampled, "z sim", axis="z")
     gate.plot_img_axis(ax, plan_dose_image, "x plan", axis="x")
     gate.plot_img_axis(ax, plan_dose_image, "y plan", axis="y")
     gate.plot_img_axis(ax, plan_dose_image, "z plan", axis="z")
+    gate.plot_img_axis(ax, dose_resampled, "x sim", axis="x", linestyle="--")
+    gate.plot_img_axis(ax, dose_resampled, "y sim", axis="y", linestyle="--")
+    gate.plot_img_axis(ax, dose_resampled, "z sim", axis="z", linestyle="--")
 
     plt.show()
 
     # TEST dose at points
-    abs_thresh = 0.3
     # get dose grid scaling
     DoseGridScalingFactor = rd.DoseGridScaling
     # get max dose plan
     max_dose = DoseGridScalingFactor * np.amax(img_plan)
+    abs_thresh = 0.01 * max_dose  # 1% max dose
 
     # get points from plan
     ref_points = get_reference_points(structs.structure_set)
@@ -254,7 +257,7 @@ def main():
     diff_doses = sim_doses - planned_doses
     print(diff_doses)
 
-    ok = np.mean(abs(diff_doses / max_dose)) < abs_thresh
+    ok = np.mean(abs(diff_doses)) < abs_thresh
     gate.test_ok(ok)
 
 
@@ -313,4 +316,15 @@ def returnValueAtPosition(img, pointOfInterest=[1, 1, 1], interpolate=True):
 
 
 if __name__ == "__main__":
-    main()
+    p1 = "/home/fava/Data/01_test_cases/01_grid_positioning/b1_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428151936450.4400.26621.dcm"
+    p2 = "/home/fava/Data/01_test_cases/01_grid_positioning/b2_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428154753423.9300.11775.dcm"
+    p3 = "/home/fava/Data/01_test_cases/01_grid_positioning/b3_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428154719788.8800.64410.dcm"
+    p4 = "/home/fava/Data/01_test_cases/01_grid_positioning/b4_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428155338172.1090.56387.dcm"
+    p5 = "/home/fava/Data/01_test_cases/01_grid_positioning/b5_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428165759233.1290.41271.dcm"
+    v1 = "/home/fava/Data/01_test_cases/01_grid_positioning/v1_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428173228101.2230.38834.dcm"
+    # read data frame
+    pklFpath = "/home/fava/Data/01_test_cases/test_pool.pkl"
+    dfhbl = pd.read_pickle(pklFpath)
+
+    rt_plan_path = dfhbl.loc[dfhbl["TaskID"] == "Geo_1.5", "RP_fpath"].array[0]
+    main(rt_plan_path)

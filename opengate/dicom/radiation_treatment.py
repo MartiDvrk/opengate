@@ -16,6 +16,7 @@ class radiation_treatment:
         self.beamset_info = gate.beamset_info(rp_path)
         self.uid = self.beamset_info.uid  # same for all files
         self.beams = self.beamset_info.beams
+        self.isocenter = self.beams[0].IsoCenter
 
         # RT doses: dictionary with dose info for each RD file. One RD for each beam
         print("----------------------------")
@@ -51,7 +52,7 @@ class radiation_treatment:
         # dose grid info
         plan_dose = self.rt_doses["PLAN"]
         dose_grid_center = plan_dose.center
-        dose_grid_size = plan_dose.nvoxels * plan_dose.spacing
+        dose_grid_size = plan_dose.physical_size
 
         # overriding voxels outside external ROI with G4_AIR
         ext_roi = gate.region_of_interest(
@@ -65,14 +66,7 @@ class radiation_treatment:
 
         # crop CT
         bb_ct = gate.bounding_box(img=ct_hu_overrides)
-        bb_dose = gate.bounding_box(
-            xyz=np.stack(
-                (
-                    dose_grid_center - 0.5 * dose_grid_size,
-                    dose_grid_center + 0.5 * dose_grid_size,
-                )
-            )
-        )
+        bb_dose = gate.bounding_box(img=plan_dose.image)
         ct_padded = ct_hu_overrides
         if not bb_dose in bb_ct:
             print("dose matrix IS NOT contained in original CT! adding dose padding")
@@ -88,6 +82,19 @@ class radiation_treatment:
         # ct_cropped = gate.crop_and_pad_image(ct_padded,ibbmin,ibbmax,-100) # "air" padding
         ct_cropped = ct_padded
         # new ct grid
-        preprocessed_ct = gate.ct_image_from_mhd(ct_cropped)
+        self.preprocessed_ct = gate.ct_image_from_mhd(ct_cropped)
 
-        return preprocessed_ct
+        return self.preprocessed_ct
+
+    def get_container_size(self):
+        ct_bb = gate.bounding_box(img=self.preprocessed_ct.img)
+        rot_box_size = 2.0001 * np.max(
+            np.abs(
+                np.stack(
+                    [ct_bb.mincorner - self.isocenter, ct_bb.maxcorner - self.isocenter]
+                )
+            ),
+            axis=0,
+        )
+
+        return list(rot_box_size)

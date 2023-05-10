@@ -186,41 +186,41 @@ def assert_stats(stat1, stat2, tolerance=0, is_ok=True):
     return is_ok
 
 
-def plot_img_axis(ax, img, label, axis="z"):
+def plot_img_axis(ax, img, label, axis="z", linestyle="-"):
     if axis == "y":
-        return plot_img_y(ax, img, label)
+        return plot_img_y(ax, img, label, linestyle)
     if axis == "x":
-        return plot_img_x(ax, img, label)
-    return plot_img_z(ax, img, label)
+        return plot_img_x(ax, img, label, linestyle)
+    return plot_img_z(ax, img, label, linestyle)
 
 
-def plot_img_z(ax, img, label):
+def plot_img_z(ax, img, label, linestyle):
     # get data in np (warning Z and X inverted in np)
     data = itk.GetArrayViewFromImage(img)
     y = np.sum(data, 2)
     y = np.sum(y, 1)
     x = np.arange(len(y)) * img.GetSpacing()[2]
-    ax.plot(x, y, label=label)
+    ax.plot(x, y, label=label, linestyle=linestyle)
     ax.legend()
 
 
-def plot_img_y(ax, img, label):
+def plot_img_y(ax, img, label, linestyle):
     # get data in np (warning Z and X inverted in np)
     data = itk.GetArrayViewFromImage(img)
     y = np.sum(data, 2)
     y = np.sum(y, 0)
     x = np.arange(len(y)) * img.GetSpacing()[1]
-    ax.plot(x, y, label=label)
+    ax.plot(x, y, label=label, linestyle=linestyle)
     ax.legend()
 
 
-def plot_img_x(ax, img, label):
+def plot_img_x(ax, img, label, linestyle):
     # get data in np (warning Z and X inverted in np)
     data = itk.GetArrayViewFromImage(img)
     y = np.sum(data, 1)
     y = np.sum(y, 0)
     x = np.arange(len(y)) * img.GetSpacing()[0]
-    ax.plot(x, y, label=label)
+    ax.plot(x, y, label=label, linestyle=linestyle)
     ax.legend()
 
 
