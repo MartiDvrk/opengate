@@ -56,7 +56,11 @@ class dose_info(object):
 
     @property
     def center(self):
-        return self.origin - 0.5 * self.spacing + 0.5 * self.nvoxels
+        return self.origin - 0.5 * self.spacing + 0.5 * self.physical_size
+
+    @property
+    def physical_size(self):
+        return self.spacing * self.nvoxels
 
     @property
     def nvoxels(self):
