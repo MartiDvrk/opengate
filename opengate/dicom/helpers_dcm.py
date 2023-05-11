@@ -11,6 +11,115 @@ import pydicom
 import itk
 import numpy as np
 from datetime import datetime
+import opengate as gate
+from scipy.interpolate import RegularGridInterpolator
+
+
+def compare_dose_at_points(plan_dose_obj, structs_obj, sim_dose_resampled):
+    rd = plan_dose_obj.dicom_obj
+    plan_dose_image = plan_dose_obj.image
+    img_plan = itk.GetArrayViewFromImage(plan_dose_image)
+    # get dose grid scaling
+    DoseGridScalingFactor = rd.DoseGridScaling
+    # get max dose plan
+    max_dose = DoseGridScalingFactor * np.amax(img_plan)
+    abs_thresh = 0.01 * max_dose  # 1% max dose
+
+    # get points from plan
+    ref_points = get_reference_points(structs_obj.structure_set)
+
+    # get planned dose for points
+    planned_doses = get_dose_from_points(
+        plan_dose_image, ref_points, DoseGridScalingFactor
+    )
+
+    # get simulated dose
+    sim_doses = get_dose_from_points(
+        sim_dose_resampled, ref_points, DoseGridScalingFactor
+    )
+
+    # get difference
+    diff_doses = sim_doses - planned_doses
+    print(diff_doses)
+    print(f"{abs_thresh = }")
+    print(f"mean diff = {np.mean(abs(diff_doses))}")
+
+    ok = np.mean(abs(diff_doses)) < abs_thresh
+
+    return ok
+
+
+def test_gamma_index(ref, target, pass_rate=0.95, **kwargs):
+    perc_pass = gamma_pass_rate(ref, target, **kwargs)
+    print(f"gamma index: {perc_pass}")
+    ok = False
+    if perc_pass >= pass_rate:
+        ok = True
+
+    return ok, perc_pass
+
+
+def gamma_pass_rate(ref, target, **kwargs):
+    img_gamma = gate.get_gamma_index(ref, target, **kwargs)
+    img_gamma_np = itk.GetArrayViewFromImage(img_gamma)
+    L_nonNeg = img_gamma_np >= 0
+    gamma_ind_sum = np.sum(img_gamma_np[L_nonNeg] < 1.000000001)
+    gamma_ind_pass_rate_actual = gamma_ind_sum / np.sum(L_nonNeg)
+    return gamma_ind_pass_rate_actual
+
+
+def get_dose_from_points(dose_img, points, DoseGridScalingFactor):
+    # get doses
+    doses = []
+    for pt in points:
+        dose = float(returnValueAtPosition(dose_img, pt, True) * DoseGridScalingFactor)
+        doses.append(dose)
+
+    return np.array(doses)
+
+
+def get_reference_points(rs):
+    # get coordinates of points from TPS (in Patient Coordinate System)
+    ref_points = []
+
+    for contour in rs.ROIContourSequence:
+        if contour.ContourSequence[0].ContourGeometricType != "POINT":
+            continue
+        pt = contour.ContourSequence[0].ContourData
+        ref_points.append(pt)
+
+    return np.array(ref_points)
+
+
+def returnValueAtPosition(img, pointOfInterest=[1, 1, 1], interpolate=True):
+    if interpolate:
+        # extract continous index for physical coordinate
+        indexToLookUp = img.TransformPhysicalPointToContinuousIndex(pointOfInterest)
+
+    # flip index to align it with numpy conventions
+    # flip=indexToLookUp[::-1]
+    # convert to list
+    indexToLookUpAsList = [
+        indexToLookUp[2],
+        indexToLookUp[1],
+        indexToLookUp[0],
+    ]  # list(flip)
+
+    # numpy data array from image
+    nda = itk.GetArrayFromImage(img)
+
+    # generate indices for interpolation file, 0 to size for all dimensions
+    x = np.arange(0, nda.shape[0], 1)
+    y = np.arange(0, nda.shape[1], 1)
+    z = np.arange(0, nda.shape[2], 1)
+
+    # initialize interpolation function
+    my_interpolating_function = RegularGridInterpolator((x, y, z), nda)
+
+    pts = np.array(indexToLookUpAsList)
+    foundValue = my_interpolating_function(pts)
+
+    return foundValue
 
 
 class bounding_box(object):

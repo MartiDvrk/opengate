@@ -51,8 +51,6 @@ class radiation_treatment:
 
         # dose grid info
         plan_dose = self.rt_doses["PLAN"]
-        dose_grid_center = plan_dose.center
-        dose_grid_size = plan_dose.physical_size
 
         # overriding voxels outside external ROI with G4_AIR
         ext_roi = gate.region_of_interest(

@@ -5,11 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial.transform import Rotation
-from scipy.interpolate import RegularGridInterpolator
 
 
-def main(rt_plan_path):
-    ## ------ INITIALIZE SIMULATION ENVIRONMENT ---------- ##
+def start_simulation(rt_plan_path):
     paths = gate.get_default_test_paths(__file__, "gate_test044_pbs")
     output_path = paths.output / "output_test051_rtp"
     ref_path = paths.output_ref / "test051_ref"
@@ -156,7 +154,7 @@ def main(rt_plan_path):
 
     ## source
     nplan = treatment.beamset_info.mswtot
-    nSim = 20000  # 328935  # particles to simulate per beam
+    nSim = 40000  # 328935  # particles to simulate per beam
     tps = gate.TreatmentPlanSource("RT_plan", sim)
     tps.set_beamline_model(IR2HBL)
     tps.set_particles_to_simulate(nSim)
@@ -170,7 +168,7 @@ def main(rt_plan_path):
         s = sim.add_actor("SimulationStatisticsActor", "Stats")
         s.track_types_flag = True
         # start simulation
-        output = sim.start()
+        output = sim.start(True)
 
         # print results at the end
         stat = output.get_actor("Stats")
@@ -215,116 +213,47 @@ def main(rt_plan_path):
     )
 
     # visualization
-    img_out = itk.GetArrayViewFromImage(dose_resampled)
+    # img_out = itk.GetArrayViewFromImage(dose_resampled)
     img_plan = itk.GetArrayViewFromImage(plan_dose_image)
-    gate.plot2D(np.squeeze(np.sum(img_plan, axis=0)), "Z plan", show=True)
-    gate.plot2D(np.squeeze(np.sum(img_out, axis=0)), "Z sim", show=True)
-    gate.plot2D(np.squeeze(np.sum(img_plan, axis=2)), "X plan", show=True)
-    gate.plot2D(np.squeeze(np.sum(img_out, axis=2)), "X sim", show=True)
-    gate.plot2D(np.squeeze(np.sum(img_plan, axis=1)), "Y plan", show=True)
-    gate.plot2D(np.squeeze(np.sum(img_out, axis=1)), "Y sim", show=True)
+    # gate.plot2D(np.squeeze(np.sum(img_plan, axis=0)), "Z plan", show=True)
+    # gate.plot2D(np.squeeze(np.sum(img_out, axis=0)), "Z sim", show=True)
+    # gate.plot2D(np.squeeze(np.sum(img_plan, axis=2)), "X plan", show=True)
+    # gate.plot2D(np.squeeze(np.sum(img_out, axis=2)), "X sim", show=True)
+    # gate.plot2D(np.squeeze(np.sum(img_plan, axis=1)), "Y plan", show=True)
+    # gate.plot2D(np.squeeze(np.sum(img_out, axis=1)), "Y sim", show=True)
 
-    # 1D
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
-    gate.plot_img_axis(ax, plan_dose_image, "x plan", axis="x")
-    gate.plot_img_axis(ax, plan_dose_image, "y plan", axis="y")
-    gate.plot_img_axis(ax, plan_dose_image, "z plan", axis="z")
-    gate.plot_img_axis(ax, dose_resampled, "x sim", axis="x", linestyle="--")
-    gate.plot_img_axis(ax, dose_resampled, "y sim", axis="y", linestyle="--")
-    gate.plot_img_axis(ax, dose_resampled, "z sim", axis="z", linestyle="--")
+    # # 1D
+    # fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
+    # gate.plot_img_axis(ax, plan_dose_image, "x plan", axis="x")
+    # gate.plot_img_axis(ax, plan_dose_image, "y plan", axis="y")
+    # gate.plot_img_axis(ax, plan_dose_image, "z plan", axis="z")
+    # gate.plot_img_axis(ax, dose_resampled, "x sim", axis="x", linestyle="--")
+    # gate.plot_img_axis(ax, dose_resampled, "y sim", axis="y", linestyle="--")
+    # gate.plot_img_axis(ax, dose_resampled, "z sim", axis="z", linestyle="--")
 
-    plt.show()
+    # plt.show()
 
-    # TEST dose at points
-    # get dose grid scaling
-    DoseGridScalingFactor = rd.DoseGridScaling
-    # get max dose plan
-    max_dose = DoseGridScalingFactor * np.amax(img_plan)
-    abs_thresh = 0.01 * max_dose  # 1% max dose
-
-    # get points from plan
-    ref_points = get_reference_points(structs.structure_set)
-
-    # get planned dose for points
-    planned_doses = get_dose_from_points(
-        plan_dose_image, ref_points, DoseGridScalingFactor
+    # TEST gamma index
+    threshold = 15 / 100 * np.amax(img_plan)
+    ok, perc_pass = gate.test_gamma_index(
+        plan_dose_image,
+        dose_resampled,
+        pass_rate=0.95,
+        dd=4,
+        dta=2,
+        threshold=threshold,
     )
 
-    # get simulated dose
-    sim_doses = get_dose_from_points(dose_resampled, ref_points, DoseGridScalingFactor)
-
-    # get difference
-    diff_doses = sim_doses - planned_doses
-    print(diff_doses)
-
-    ok = np.mean(abs(diff_doses)) < abs_thresh
     gate.test_ok(ok)
 
 
-def get_dose_from_points(dose_img, points, DoseGridScalingFactor):
-    # get doses
-    doses = []
-    for pt in points:
-        dose = float(returnValueAtPosition(dose_img, pt, True) * DoseGridScalingFactor)
-        doses.append(dose)
-
-    return np.array(doses)
-
-
-def get_reference_points(rs):
-    # get coordinates of points from TPS (in Patient Coordinate System)
-    ref_points = []
-
-    for contour in rs.ROIContourSequence:
-        if contour.ContourSequence[0].ContourGeometricType != "POINT":
-            continue
-        pt = contour.ContourSequence[0].ContourData
-        ref_points.append(pt)
-
-    return np.array(ref_points)
-
-
-def returnValueAtPosition(img, pointOfInterest=[1, 1, 1], interpolate=True):
-    if interpolate:
-        # extract continous index for physical coordinate
-        indexToLookUp = img.TransformPhysicalPointToContinuousIndex(pointOfInterest)
-
-    # flip index to align it with numpy conventions
-    # flip=indexToLookUp[::-1]
-    # convert to list
-    indexToLookUpAsList = [
-        indexToLookUp[2],
-        indexToLookUp[1],
-        indexToLookUp[0],
-    ]  # list(flip)
-
-    # numpy data array from image
-    nda = itk.GetArrayFromImage(img)
-
-    # generate indices for interpolation file, 0 to size for all dimensions
-    x = np.arange(0, nda.shape[0], 1)
-    y = np.arange(0, nda.shape[1], 1)
-    z = np.arange(0, nda.shape[2], 1)
-
-    # initialize interpolation function
-    my_interpolating_function = RegularGridInterpolator((x, y, z), nda)
-
-    pts = np.array(indexToLookUpAsList)
-    foundValue = my_interpolating_function(pts)
-
-    return foundValue
-
-
 if __name__ == "__main__":
-    p1 = "/home/fava/Data/01_test_cases/01_grid_positioning/b1_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428151936450.4400.26621.dcm"
-    p2 = "/home/fava/Data/01_test_cases/01_grid_positioning/b2_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428154753423.9300.11775.dcm"
-    p3 = "/home/fava/Data/01_test_cases/01_grid_positioning/b3_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428154719788.8800.64410.dcm"
-    p4 = "/home/fava/Data/01_test_cases/01_grid_positioning/b4_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428155338172.1090.56387.dcm"
-    p5 = "/home/fava/Data/01_test_cases/01_grid_positioning/b5_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428165759233.1290.41271.dcm"
-    v1 = "/home/fava/Data/01_test_cases/01_grid_positioning/v1_GeometryTest_PhantID27/RP1.2.752.243.1.1.20230428173228101.2230.38834.dcm"
     # read data frame
     pklFpath = "/home/fava/Data/01_test_cases/test_pool.pkl"
-    dfhbl = pd.read_pickle(pklFpath)
-
-    rt_plan_path = dfhbl.loc[dfhbl["TaskID"] == "Geo_1.5", "RP_fpath"].array[0]
-    main(rt_plan_path)
+    df = pd.read_pickle(pklFpath)
+    l = (df["GroupID"] == 11) & (df["GroupSubID"] == 3)
+    # rt_plan_path = dfhbl.loc[dfhbl["TaskID"] == "Geo_2.3", "RP_fpath"].array[0]
+    df = df[l]
+    for index, row in df.iterrows():
+        rt_plan_path = row["RP_fpath"]
+        start_simulation(rt_plan_path)
