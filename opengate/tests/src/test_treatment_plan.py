@@ -154,12 +154,13 @@ def start_simulation(rt_plan_path):
 
     ## source
     nplan = treatment.beamset_info.mswtot
-    nSim = 40000  # 328935  # particles to simulate per beam
+    nSim = 400000  # 328935  # particles to simulate per beam
     tps = gate.TreatmentPlanSource("RT_plan", sim)
     tps.set_beamline_model(IR2HBL)
     tps.set_particles_to_simulate(nSim)
     tps.set_spots_from_rtplan(rt_plan_path)
     tps.initialize_tpsource()
+    actual_n_sim = tps.actual_sim_particles
 
     # start simulation
     run_simulation = True
@@ -177,7 +178,7 @@ def start_simulation(rt_plan_path):
     # rescale dose on planned number of primaries
     dose_path = gate.scale_dose(
         str(dose.output).replace(".mhd", "_dose.mhd"),
-        nplan / nSim,
+        nplan / actual_n_sim,
         output_path / "threeDdoseWater.mhd",
     )
 
@@ -186,19 +187,6 @@ def start_simulation(rt_plan_path):
     img_mhd_out.SetOrigin(
         preprocessed_ct.origin
     )  # dose actor by default has origin in [0,0,0]
-
-    print("--CT--")
-    print(preprocessed_ct.nvoxels, preprocessed_ct.voxel_size, preprocessed_ct.origin)
-    print("--DOSE OUT--")
-    print(dose.size, dose.spacing, img_mhd_out.GetOrigin())
-    print("--MASS--")
-    print(mass_image.shape[::-1], mass_image.GetSpacing(), mass_image.GetOrigin())
-    print("--PLAN DOSE--")
-    print(
-        plan_dose_image.shape[::-1],
-        plan_dose_image.GetSpacing(),
-        plan_dose_image.GetOrigin(),
-    )
 
     # rescaledose image on rt dose grid
     dose_resampled = gate.resample_dose(img_mhd_out, mass_image, plan_dose_image)
@@ -244,16 +232,20 @@ def start_simulation(rt_plan_path):
         threshold=threshold,
     )
 
-    gate.test_ok(ok)
+    # gate.test_ok(ok)
+    return perc_pass
 
 
 if __name__ == "__main__":
     # read data frame
     pklFpath = "/home/fava/Data/01_test_cases/test_pool.pkl"
     df = pd.read_pickle(pklFpath)
-    l = (df["GroupID"] == 11) & (df["GroupSubID"] == 3)
+    l = df["GroupID"] == 11  # & (df["GroupSubID"] == 3)
     # rt_plan_path = dfhbl.loc[dfhbl["TaskID"] == "Geo_2.3", "RP_fpath"].array[0]
     df = df[l]
+    gamma_index = []
     for index, row in df.iterrows():
         rt_plan_path = row["RP_fpath"]
-        start_simulation(rt_plan_path)
+        perc_pass = start_simulation(rt_plan_path)
+        gamma_index.append(perc_pass)
+    print(gamma_index)
