@@ -77,3 +77,4 @@ from .dicom.radiation_treatment import *
 from .dicom.helpers_dcm import *
 from .dicom.roi_utils import *
 from .dicom.gamma_index import *
+from .dicom.rbe_test_dcm_wrapper import *

@@ -237,6 +237,15 @@ def start_simulation(rt_plan_path):
 
 
 if __name__ == "__main__":
+    # rt_plan_path = '/home/fava/TreatmentPlanYihan/RP1.2.752.243.1.1.20230516164150745.1800.82856.dcm'
+    # treatment = gate.rbe_test_dcm_wrapper(rt_plan_path, clinical=False)
+    # hu_density = "/home/fava/opengate/opengate/data/Schneider2000DensitiesTable.txt"
+
+    # # preprocessing
+    # preprocessed_ct = treatment.preprocess_ct()
+    # ct_cropped = preprocessed_ct.img
+    # mass_image = gate.create_mass_image(ct_cropped, hu_density)
+
     # read data frame
     pklFpath = "/home/fava/Data/01_test_cases/test_pool.pkl"
     df = pd.read_pickle(pklFpath)

@@ -45,7 +45,7 @@ class radiation_treatment:
         _, ct_files = gate.get_series_filenames(self.dcm_dir, self.ctuid)
         self.ct_image = gate.ct_image_from_dicom(ct_files, self.ctuid)
 
-    def preprocess_ct(self):
+    def preprocess_ct(self, enforce_air_outside_ext=True):
         ct_orig = self.ct_image.img
         ct_array = self.ct_image.array
 
@@ -53,14 +53,16 @@ class radiation_treatment:
         plan_dose = self.rt_doses["PLAN"]
 
         # overriding voxels outside external ROI with G4_AIR
-        ext_roi = gate.region_of_interest(
-            ds=self.structures_dcm, roi_id=self.structures.external
-        )
-        ext_mask = ext_roi.get_mask(ct_orig, corrected=False)
-        ext_array = itk.GetArrayViewFromImage(ext_mask) > 0
-        ct_array[np.logical_not(ext_array)] = -1000  # hu_air
-        ct_hu_overrides = itk.GetImageFromArray(ct_array)
-        ct_hu_overrides.CopyInformation(ct_orig)
+        ct_hu_overrides = ct_orig
+        if enforce_air_outside_ext:
+            ext_roi = gate.region_of_interest(
+                ds=self.structures_dcm, roi_id=self.structures.external
+            )
+            ext_mask = ext_roi.get_mask(ct_orig, corrected=False)
+            ext_array = itk.GetArrayViewFromImage(ext_mask) > 0
+            ct_array[np.logical_not(ext_array)] = -1000  # hu_air
+            ct_hu_overrides = itk.GetImageFromArray(ct_array)
+            ct_hu_overrides.CopyInformation(ct_orig)
 
         # crop CT
         bb_ct = gate.bounding_box(img=ct_hu_overrides)
