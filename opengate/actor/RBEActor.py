@@ -52,30 +52,46 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         user_info.rbe_model = "mkm"
         user_info.lookup_table_path = None
         user_info.lookup_table = None
-        
 
-        user_info.r_n = 3.9 #um
-        user_info.r_d = 0.32 #um
-        user_info.alpha_0 = 0.172 #Gy-1
-        user_info.beta = 0.0615 #Gy-2
-            
-        user_info.alpha_ref = 0.764 #Gy-1
-        user_info.beta_ref = 0.0615 #Gy-2
+        user_info.r_n = 3.9  # um
+        user_info.r_d = 0.32  # um
+        user_info.alpha_0 = 0.172  # Gy-1
+        user_info.beta = 0.0615  # Gy-2
+
+        user_info.alpha_ref = 0.764  # Gy-1
+        user_info.beta_ref = 0.0615  # Gy-2
         user_info.fclin = 2.41
 
     def store_lookup_table(self, table_path):
+        # Element-Z mapping
+        mapping = {
+            "H": 1,
+            "He": 2,
+            "Li": 3,
+            "Be": 4,
+            "B": 5,
+            "C": 6,
+            "N": 7,
+            "O": 8,
+            "F": 9,
+            "Ne": 10,
+        }
+
         with open(table_path, "r") as f:
             lines = f.readlines()
         # add extra line to sign end of file
         lines.append("\n")
         start_table = False
         end_table = True
-        e_table = []
+        # e_table = []
         v_table = []
         for line in lines:
             if "Fragment" in line:
+                element = line.split()[1]
+                Z = mapping[element]
                 values = []
                 energy = []
+                v_table.append([Z])
                 start_table = True
                 end_table = False
             elif line.startswith("\n") == False and start_table:
@@ -85,21 +101,21 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
             elif not end_table:
                 start_table = False
                 # if count == 1:
-                e_table.append(energy)
+                # e_table.append(energy)
+                v_table.append(energy)
                 v_table.append(values)  # we want to do this only once per table
                 end_table = True
         # check if same energy vector for all fragments
-        e_ref = e_table[0]
-        bool_vec = [
-            k for k in e_table if k != e_ref
-        ]  # empty if all energies are the same
-        if bool_vec:
-            raise ValueError(
-                "Energy vector should be the same for each fragment in RBE table"
-            )
-        v_table.insert(0, e_ref)
-
-        return v_table     
+        # e_ref = e_table[0]
+        # bool_vec = [
+        #     k for k in e_table if k != e_ref
+        # ]  # empty if all energies are the same
+        # if bool_vec:
+        #     raise ValueError(
+        #         "Energy vector should be the same for each fragment in RBE table"
+        #     )
+        # v_table.insert(0, e_ref)
+        return v_table
 
     def __init__(self, user_info):
         if not user_info.lookup_table_path:
@@ -111,7 +127,7 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
             user_info.lookup_table_path
         )  # to pass it on C++ side
         print(type(user_info.lookup_table))
-        
+
         gate.ActorBase.__init__(self, user_info)
         g4.GateRBEActor.__init__(self, user_info.__dict__)
         # attached physical volume (at init)
@@ -160,8 +176,6 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         # for initialization during the first run
         self.first_run = True
 
-
-
         if self.user_info.other_material:
             self.user_info.rbe_to_other_material = True
         if self.user_info.rbe_to_other_material and not self.user_info.other_material:
@@ -198,7 +212,6 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         gate.update_image_py_to_cpp(
             self.py_numerator_image, self.cpp_numerator_image, self.first_run
         )
-
 
         self.py_denominator_image = gate.create_image_like(
             self.py_numerator_image, pixel_type="double"
@@ -265,8 +278,8 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         # write the image at the end of the run
         # FIXME : maybe different for several runs
         if self.user_info.output:
-            suffix = "_"+self.user_info.rbe_model
-            
+            suffix = "_" + self.user_info.rbe_model
+
             if self.user_info.rbe_to_other_material or self.user_info.rbe_to_water:
                 suffix += f"_convto_{self.user_info.other_material}"
 
@@ -279,10 +292,14 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
                 filterVal=0,
                 replaceFilteredVal=0,
             )
-            
-            
-            #itk.imwrite(self.py_RBE_image, gate.check_filename_type(fPath))
-            itk.imwrite(self.py_alpha_mix_image, gate.check_filename_type(str(self.user_info.output).replace(".mhd","_alpha.mhd")))
+
+            # itk.imwrite(self.py_RBE_image, gate.check_filename_type(fPath))
+            itk.imwrite(
+                self.py_alpha_mix_image,
+                gate.check_filename_type(
+                    str(self.user_info.output).replace(".mhd", "_alpha.mhd")
+                ),
+            )
 
             # for parrallel computation we need to provide both outputs
             if self.user_info.separate_output:

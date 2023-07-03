@@ -17,7 +17,6 @@
 
 namespace py = pybind11;
 
-
 class GateRBEActor : public GateVActor {
 
 public:
@@ -31,7 +30,6 @@ public:
 
   // Called every time a Run starts (all threads)
   virtual void BeginOfRunAction(const G4Run *run);
-  
 
   virtual void EndSimulationAction();
 
@@ -48,18 +46,17 @@ public:
 
   bool fRBEtoOtherMaterial;
   std::string fotherMaterial;
-  
+
   // RBE specific
   std::string fRBEmodel;
   double fAlpha0;
   double fBeta;
-  
 
 private:
   // RBE specific
-  G4DataVector *energies;
+  // G4DataVector *energies;
   std::vector<G4DataVector *> *table;
-  
+
   void CreateLookupTable(py::dict &user_info);
   double GetValue(int Z, float energy);
   size_t FindLowerBound(G4double x, G4DataVector *values) const;
@@ -68,8 +65,6 @@ private:
 
   G4ThreeVector fInitialTranslation;
   std::string fHitType;
-
-  
 };
 
 #endif // GateRBEActor_h
