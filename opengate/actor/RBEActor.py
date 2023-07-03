@@ -53,12 +53,14 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         user_info.lookup_table_path = None
         user_info.lookup_table = None
         
-        user_info.r_n = 0
-        user_info.r_d = 0
-        user_info.alpha_0 = 0
-        user_info.beta = 0
-        user_info.alpha_reference = 0.764
-        user_info.beta_reference = 0.0615
+
+        user_info.r_n = 3.9 #um
+        user_info.r_d = 0.32 #um
+        user_info.alpha_0 = 0.172 #Gy-1
+        user_info.beta = 0.0615 #Gy-2
+            
+        user_info.alpha_ref = 0.764 #Gy-1
+        user_info.beta_ref = 0.0615 #Gy-2
         user_info.fclin = 2.41
 
     def store_lookup_table(self, table_path):
@@ -97,17 +99,7 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
             )
         v_table.insert(0, e_ref)
 
-        return v_table
-    
-    def init_const(self, user_info):
-        if user_info.model == "mkm":
-            user_info.r_n = 3.9 #um
-            user_info.r_d = 0.32 #um
-            user_info.alpha_0 = 0.172 #Gy-1
-            user_info.beta = 0.0615 #Gy-2
-            
-        user_info.alpha_ref = 0.764 #Gy-1
-        user_info.beta_ref = 0.0615 #Gy-2
+        return v_table     
 
     def __init__(self, user_info):
         if not user_info.lookup_table_path:
@@ -120,8 +112,6 @@ class RBEActor(g4.GateRBEActor, gate.ActorBase):
         )  # to pass it on C++ side
         print(type(user_info.lookup_table))
         
-        self.init_const(user_info)
-
         gate.ActorBase.__init__(self, user_info)
         g4.GateRBEActor.__init__(self, user_info.__dict__)
         # attached physical volume (at init)

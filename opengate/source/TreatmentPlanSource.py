@@ -54,9 +54,10 @@ class TreatmentPlanSource:
 
         # initialize a pencil beam for each spot
         for i, spot in enumerate(spots_array):
-            nspot = np.round(
-                spot.beamFraction * nSim
-            )  # simulate a fraction of the beam particles for this spot
+
+            # simulate a fraction of the beam particles for this spot
+            nspot = np.round(spot.beamFraction * nSim)
+
             if nspot == 0:
                 continue
 

@@ -10,6 +10,9 @@ paths = gate.get_default_test_paths(__file__, "gate_test044_pbs")
 output_path = paths.output / "output_test051_rtp"
 ref_path = paths.output_ref / "test051_ref"
 
+# create output dir, if it doesn't exist
+if not os.path.isdir(output_path):
+    os.mkdir(output_path)
 
 # create the simulation
 sim = gate.Simulation()
@@ -125,9 +128,7 @@ output = sim.start()
 stat = output.get_actor("Stats")
 print(stat)
 
-# create output dir, if it doesn't exist
-if not os.path.isdir(output_path):
-    os.mkdir(output_path)
+
 
 ## ------ TESTS -------##
 dose_path = gate.scale_dose(

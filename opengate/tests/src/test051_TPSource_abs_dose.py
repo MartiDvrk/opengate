@@ -137,13 +137,13 @@ tps.initialize_tpsource()
 # add stat actor
 s = sim.add_actor("SimulationStatisticsActor", "Stats")
 s.track_types_flag = True
-# start simulation
-output = sim.start()
+# # start simulation
+# output = sim.start()
 
-## -------------END SCANNING------------- ##
-# print results at the end
-stat = output.get_actor("Stats")
-print(stat)
+# ## -------------END SCANNING------------- ##
+# # print results at the end
+# stat = output.get_actor("Stats")
+# print(stat)
 
 # create output dir, if it doesn't exist
 if not os.path.isdir(output_path):
@@ -156,11 +156,45 @@ dose_path = gate.scale_dose(
     output_path / "threeDdoseWaternew.mhd",
 )
 
+
 let_path = gate.scale_dose(
     str(letd.output),
     ntot / nSim,
-    output_path / "threeDletdWaternew.mhd",
+    output_path / "threeDletdWaternew.mhd")
+
+# ABSOLUTE DOSE
+
+# read output and ref
+img_mhd_out = itk.imread(dose_path)
+img_mhd_ref = itk.imread(ref_path / "idc-PHANTOM-roos-F5x5cm_E120MeVn-PLAN-Physical.mhd")
+data = itk.GetArrayViewFromImage(img_mhd_out)
+data_ref = itk.GetArrayViewFromImage(img_mhd_ref)
+shape = data.shape
+spacing = img_mhd_out.GetSpacing()
+spacing_ref = np.flip(img_mhd_ref.GetSpacing())
+print(shape, spacing)
+ok = gate.assert_img_sum(
+    img_mhd_out,
+    img_mhd_ref,
 )
+
+points = 400 - np.linspace(10, 14, 9)
+ok = (
+    gate.compare_dose_at_points(
+        points,
+        data,
+        data_ref,
+        shape,
+        data_ref.shape,
+        spacing,
+        spacing_ref,
+        axis1="z",
+        axis2="x",
+        rel_tol=0.03,
+    )
+    and ok)
+
+
 
 # ABSOLUTE DOSE
 

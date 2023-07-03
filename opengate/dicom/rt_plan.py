@@ -43,13 +43,13 @@ class layer_info(object):
     def __init__(self, ctrlpnt, j, cumsumchk=[], verbose=False, keep0=False):
         self._cp = ctrlpnt
         if verbose:
-            logger.debug("{}. control point with type {}".format(j, type(self._cp)))
+            print("{}. control point with type {}".format(j, type(self._cp)))
             for k in self._cp.keys():
                 if pydicom.datadict.dictionary_has_tag(k):
                     kw = pydicom.datadict.keyword_for_tag(k)
                 else:
                     kw = "(UNKNOWN)"
-                logger.debug("k={} keyword={}".format(k, kw))
+                print("k={} keyword={}".format(k, kw))
         nspot = int(self._cp.NumberOfScanSpotPositions)
         # assert(self._cp.NominalBeamEnergyUnit == 'MEV')
         if nspot == 1:
@@ -62,11 +62,6 @@ class layer_info(object):
         # self.spotID = str(self._cp.ScanSpotTuneID)
         cmsw = float(self._cp.CumulativeMetersetWeight)
         if cumsumchk:
-            logger.debug(
-                "CumulativeMetersetWeight={0:14.8g} sum of previous spots={1:14.8g} diff={2:14.8g}".format(
-                    cmsw, cumsumchk[0], cmsw - cumsumchk[0]
-                )
-            )
             assert is_close(cmsw, cumsumchk[0])
         # self.npainting = int(self._cp.NumberOfPaintings)
         xy = np.array([float(pos) for pos in self._cp.ScanSpotPositionMap]).reshape(
@@ -81,11 +76,12 @@ class layer_info(object):
             self.y = self.y[mask]
 
         wsum = np.sum(self.w)
-        logger.debug(
-            "layer number {} has {} spots, of which {} with zero weight, cumsum={}, sum(w)={}".format(
-                j, len(self.w), np.sum(self.w <= 0), cmsw, wsum
+        if verbose:
+            print(
+                "layer number {} has {} spots, of which {} with zero weight, cumsum={}, sum(w)={}".format(
+                    j, len(self.w), np.sum(self.w <= 0), cmsw, wsum
+                )
             )
-        )
 
         cumsumchk[0] += wsum
 
@@ -127,10 +123,9 @@ class layer_info(object):
 class beam_info(object):
     # def __init__(self,beam,rd,i,keep0=False):
     def __init__(self, beam, i, override_number, keep0=False):
-        logger.debug("loading {}th beam".format(i))
+        print("loading {}th beam".format(i))
         self._dcmbeam = beam  # the DICOM beam object
         self._warnings = list()  # will hopefully stay empty
-        logger.debug("trying to access first control point")
         self._icp0 = beam.IonControlPointSequence[0]  # convenience: first control point
         self._beam_number_is_fishy = (
             override_number  # workaround for buggy TPSs, e.g. PDM
@@ -139,19 +134,17 @@ class beam_info(object):
         self._layers = list()
         mswchk = self.FinalCumulativeMetersetWeight
         cumsumchk = [0.0]
-        logger.debug("going to read all layers")
+        print("going to read all layers")
         for j, icp in enumerate(self._dcmbeam.IonControlPointSequence):
             li = layer_info(icp, j, cumsumchk, False, keep0)
             if 0.0 < li.mswtot or keep0:
                 self._layers.append(li)
-        logger.debug("survived reading all layers")
         if not is_close(mswchk, cumsumchk[0]):
             raise ValueError(
                 "final cumulative msw {} != sum of spot msw {}".format(
                     mswchk, cumsumchk[0]
                 )
             )
-        logger.debug("survived cumulative MSW check")
 
     def GetAndClearWarnings(self):
         # return and clear
@@ -182,34 +175,17 @@ class beam_info(object):
                 )
         else:
             msg = "No isocenter specified in treatment plan; assuming [0,0,0] for now, keep fingers crossed."
-        logger.error(msg)
+        print(msg)
         self._warnings.append(msg)
         # FIXME: what to do else? Cry? Throw segfaults? Drink bad coffee?
         return [0.0, 0.0, 0.0]
 
     @property
     def Name(self):
-        # TODO: the Name and name properties are identical, keep only one of them.
         return str(self._dcmbeam.BeamName)
 
     @property
     def Number(self):
-        # TODO: the Number and number properties are identical, keep only one of them.
-        nr = (
-            str(self._index + 1)
-            if self._beam_number_is_fishy
-            else str(self._dcmbeam.BeamNumber)
-        )
-        return nr
-
-    @property
-    def name(self):
-        # TODO: the Name and name properties are identical, keep only one of them.
-        return str(self._dcmbeam.BeamName)
-
-    @property
-    def number(self):
-        # TODO: the Number and number properties are identical, keep only one of them.
         nr = (
             str(self._index + 1)
             if self._beam_number_is_fishy
@@ -253,7 +229,7 @@ class beam_info(object):
         msg = "treatment machine name for beam name={} number={} missing in treatment plan, guessing '{}' from gantry angle {}".format(
             self.name, self.number, ducktape, self.gantry_angle
         )
-        logger.error(msg)
+        print(msg)
         self._warnings.append(msg)
         return ducktape  # ugly workaround! FIXME!
 
@@ -321,16 +297,22 @@ class beam_info(object):
 
 
 def sequence_check(obj, attr, nmin=1, nmax=0, name="object"):
-    logger.debug("checking that {} has attribute {}".format(name, attr))
+    print("checking that {} has attribute {}".format(name, attr))
     assert hasattr(obj, attr)
     seq = getattr(obj, attr)
-    logger.debug(
+    print(
         "{} has length {}, will check if it >={} and <={}".format(
             name, len(seq), nmin, nmax
         )
     )
     assert len(seq) >= nmin
     assert nmax == 0 or len(seq) <= nmax
+
+
+def loop_over_tags_level(tags, data, missing_keys):
+    for key in tags:
+        if key not in data:
+            missing_keys.append(key)
 
 
 class beamset_info(object):
@@ -364,12 +346,66 @@ class beamset_info(object):
         "Treatment Machine(s)",
     ]
 
+    # Mandatory tags for correct plan
+    genericTags = [
+        "PatientID",
+        "PatientName",
+        "PatientBirthDate",
+        "PatientSex",
+        "RTPlanLabel",
+        "SOPInstanceUID",
+        "ReferringPhysicianName",
+        "PlanIntent",
+        "RTPlanLabel",
+        "SOPClassUID",
+        "SOPInstanceUID",
+        "IonBeamSequence",
+        "FractionGroupSequence",
+        "ReferencedStructureSetSequence",
+    ]
+    # Optional:  "OperatorsName","ReviewerName","ReviewDate","ReviewTime","DoseReferenceSequence"
+
+    ionBeamTags = [
+        "BeamNumber",
+        "IonControlPointSequence",
+        "FinalCumulativeMetersetWeight",
+        "BeamName",
+        "RadiationType",
+        "RadiationAtomicNumber",
+        "RadiationMassNumber",
+        "RadiationChargeState",
+        "TreatmentMachineName",
+        "NumberOfRangeModulators",
+        "NumberOfRangeShifters",
+        "PrimaryDosimeterUnit",
+        "SnoutSequence",
+    ]  # "RangeModulatorSequence","RangeShifterSequence" optiona, depend on "NumberOfRangeModulators","NumberOfRangeShifters"
+
+    doseSeqTags = ["ReferencedROINumber"]  # Optional: "TargetPrescriptionDose"
+    refStructTags = ["ReferencedSOPInstanceUID"]
+    fractionTags = ["ReferencedBeamSequence", "NumberOfFractionsPlanned"]
+    icpTags = [
+        "PatientSupportAngle",
+        "IsocenterPosition",
+        "GantryAngle",
+        "SnoutPosition",
+        "NominalBeamEnergy",
+        "NumberOfScanSpotPositions",
+        "ScanSpotMetersetWeights",
+        "ScanSpotPositionMap",
+        "CumulativeMetersetWeight",
+        "ScanSpotTuneID",
+        "NumberOfPaintings",
+    ]
+    snoutTag = "SnoutID"
+    raShiTag = "RangeShifterID"
+    rangeModTag = "RangeModulatorID"
+
     def __init__(self, rpfp):
         self._warnings = list()  # will hopefully stay empty
         self._beam_numbers_corrupt = False  # e.g. PDM does not define beam numbers
         self._rp = pydicom.read_file(rpfp)
         self._rpfp = rpfp
-        logger.debug("beamset: survived reading DICOM file {}".format(rpfp))
         self._rpdir = os.path.dirname(rpfp)
         self._rpuid = str(self._rp.SOPInstanceUID)
         self._dose_roiname = (
@@ -378,14 +414,12 @@ class beamset_info(object):
         self._dose_roinumber = (
             None  # stays None for CT-less plans, e.g. commissioning plans
         )
-        logger.debug("beamset: going to do some checks")
+        # verify integrity of DICOM RT plan
         self._chkrp()
-        logger.debug("beamset: survived check, loading beams")
         self._beams = [
             beam_info(b, i, self._beam_numbers_corrupt)
             for i, b in enumerate(self._rp.IonBeamSequence)
         ]
-        logger.debug("beamset: DONE")
 
     def GetAndClearWarnings(self):
         # return a copy
@@ -407,7 +441,7 @@ class beamset_info(object):
                     "attempt to get nonexisting beam with index {}".format(k)
                 )
         for b in self._beams:
-            if str(k) == b.name or str(k) == b.number:
+            if str(k) == b.Name or str(k) == b.Number:
                 return b
         raise KeyError("attempt to get nonexisting beam with key {}".format(k))
 
@@ -421,18 +455,76 @@ class beamset_info(object):
                     self._rpfp, self._rp.SOPClassUID, sop_class_name
                 )
             )
-        missing_attrs = list()
-        for a in ["IonBeamSequence"] + self.plan_req_attrs + self.patient_attrs:
-            b = a.replace(" ", "")
-            if not hasattr(self._rp, b):
-                missing_attrs.append(b)
-        if missing_attrs:
-            raise IOError(
-                "bad plan file {},\nmissing keys: {}".format(
-                    self._rpfp, ", ".join(missing_attrs)
-                )
+        ## --- Verify that all the tags are present and return an error if some are missing --- ##
+        missing_keys = []
+
+        # check first layer of the hierarchy
+        loop_over_tags_level(self.genericTags, self._rp, missing_keys)
+
+        if "IonBeamSequence" in self._rp:
+            # check ion beam sequence
+            loop_over_tags_level(
+                self.ionBeamTags, self._rp.IonBeamSequence[0], missing_keys
             )
-        # self._get_rds()
+
+            # check icp sequence
+            if "IonControlPointSequence" not in missing_keys:
+                loop_over_tags_level(
+                    self.icpTags,
+                    self._rp.IonBeamSequence[0].IonControlPointSequence[0],
+                    missing_keys,
+                )
+
+            # check snout, rashi and rangMod
+            if "NumberOfRangeModulators" not in missing_keys:
+                if self._rp.IonBeamSequence[0].NumberOfRangeModulators != 0:
+                    if "RangeModulatorSequence" not in self._rp.IonBeamSequence[0]:
+                        missing_keys.append("RangeModulatorSequence")
+                    elif (
+                        self.rangeModTag
+                        not in self._rp.IonBeamSequence[0].RangeModulatorSequence[0]
+                    ):
+                        missing_keys.append(self.rangeModTag)
+
+            if "NumberOfRangeShifters" not in missing_keys:
+                if self._rp.IonBeamSequence[0].NumberOfRangeShifters != 0:
+                    if "RangeShifterSequence" not in self._rp.IonBeamSequence[0]:
+                        missing_keys.append("RangeShifterSequence")
+                    elif (
+                        self.raShiTag
+                        not in self._rp.IonBeamSequence[0].RangeShifterSequence[0]
+                    ):
+                        missing_keys.append(self.raShiTag)
+
+            if "SnoutSequence" not in missing_keys:
+                if self.snoutTag not in self._rp.IonBeamSequence[0].SnoutSequence[0]:
+                    missing_keys.append("SnoutID")
+
+        if "DoseReferenceSequence" in self._rp:
+            # check dose sequence
+            loop_over_tags_level(
+                self.doseSeqTags, self._rp.DoseReferenceSequence[0], missing_keys
+            )
+
+        if "ReferencedStructureSetSequence" in self._rp:
+            # check reference structure sequence
+            loop_over_tags_level(
+                self.refStructTags,
+                self._rp.ReferencedStructureSetSequence[0],
+                missing_keys,
+            )
+
+        if "FractionGroupSequence" in self._rp:
+            # check fractions sequence
+            loop_over_tags_level(
+                self.fractionTags, self._rp.FractionGroupSequence[0], missing_keys
+            )
+
+        if missing_keys:
+            raise ImportError("DICOM RP file not conform. Missing keys: ", missing_keys)
+        else:
+            print("\033[92mRP file ok \033[0m")
+
         if hasattr(self._rp, "DoseReferenceSequence"):
             sequence_check(self._rp, "DoseReferenceSequence", 1, 1)
             if hasattr(self._rp.DoseReferenceSequence[0], "ReferencedROINumber"):
@@ -440,11 +532,10 @@ class beamset_info(object):
                     self._rp.DoseReferenceSequence[0].ReferencedROINumber
                 )
         if self._dose_roinumber is None:
-            logger.info(
+            print(
                 "no target ROI specified (probably because of missing DoseReferenceSequence)"
             )
-        sequence_check(self._rp, "IonBeamSequence", 1, 0)
-        sequence_check(self._rp, "FractionGroupSequence", 1, 1)
+
         frac0 = self._rp.FractionGroupSequence[0]
         sequence_check(
             frac0,
@@ -452,17 +543,17 @@ class beamset_info(object):
             len(self._rp.IonBeamSequence),
             len(self._rp.IonBeamSequence),
         )
+
+        # check for currupted beams
         number_set = set()
         for dcmbeam in self._rp.IonBeamSequence:
             nr = int(dcmbeam.BeamNumber)
             if nr < 0:
                 self._beam_numbers_corrupt = True
-                logger.error(
-                    "CORRUPT INPUT: found a negative beam number {}.".format(nr)
-                )
+                print("CORRUPT INPUT: found a negative beam number {}.".format(nr))
             if nr in number_set:
                 self._beam_numbers_corrupt = True
-                logger.error(
+                print(
                     "CORRUPT INPUT: found same beam number {} for multiple beams.".format(
                         nr
                     )
@@ -470,9 +561,8 @@ class beamset_info(object):
             number_set.add(nr)
         if self._beam_numbers_corrupt:
             msg = "Beam numbers are corrupt! Will override them with simple enumeration, keep fingers crossed."
-            logger.error(msg)
+            print(msg)
             self._warnings.append(msg)
-        logger.debug("checked planfile, looks like all attributes are available...")
 
     @property
     def mswtot(self):
@@ -517,7 +607,7 @@ class beamset_info(object):
         nfrac = int(self._rp.FractionGroupSequence[0].NumberOfFractionsPlanned)
         if nfrac > 0:
             return nfrac
-        logger.error("Got Nfractions={} ???! Using nfrac=1 instead.".format(nfrac))
+        print("Got Nfractions={} ???! Using nfrac=1 instead.".format(nfrac))
         return 1
 
     @property
@@ -531,6 +621,10 @@ class beamset_info(object):
     @property
     def target_ROI_number(self):
         return self._dose_roinumber
+
+    @property
+    def structure_set_uid(self):
+        return self._rp.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
 
     @property
     def prescription_dose(self):
@@ -613,6 +707,10 @@ class beamset_info(object):
             info["Sanitized RT Plan Label"] = sanitized
         return info
 
+    @property
+    def dicom_obj(self):
+        return self._rp
+
     def __repr__(self):
         s = "\nPLAN\n\t" + "\n\t".join(
             ["{0:30s}: {1}".format(a, self.plan_info[a]) for a in self.plan_attrs]
@@ -660,9 +758,11 @@ def spots_info_from_txt(txtFile, ionType):
         if line.startswith("####X Y Weight"):
             start_index.append(i + 1)
 
+
     np = sum(ntot)
     for k in range(nFields):
         # np = ntot[k]
+
         for i in range(len(energies)):
             e = energies[i]
             print(f"ENERGY: {e}")
@@ -683,7 +783,9 @@ def get_spots_from_beamset(beamset):
     spots_array = []
     mswtot = beamset.mswtot
     for beam in beamset.beams:
+
         # mswtot = beam.mswtot
+
         for energy_layer in beam.layers:
             for spot in energy_layer.spots:
                 nPlannedSpot = spot.w

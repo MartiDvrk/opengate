@@ -11,7 +11,6 @@ from .helpers_tests import *
 from .helpers_tests_root import *
 from .helpers_transform import *
 from .helpers_beamline import *
-from .helpers_rt_plan import *
 
 # main mechanism for the 'elements': source, actor, volume
 from .UserInfo import *
@@ -68,3 +67,11 @@ from .RunAction import *
 from .physics.PhysicsUserInfo import *
 from .physics.PhysicsManager import *
 from .physics.PhysicsEngine import *
+
+# Dicom
+from .dicom.rt_plan import *
+from .dicom.rt_dose import *
+from .dicom.rt_structs import *
+from .dicom.ct_image import *
+from .dicom.radiation_treatment import *
+from .dicom.helpers_dcm import *

@@ -1378,11 +1378,13 @@ def compare_dose_at_points(
     ok = True
     s1 = 0
     s2 = 0
+
     x1, doseV1 = get_1D_profile(dose1, shape1, spacing1, axis=axis1)
     x2, doseV2 = get_1D_profile(dose2, shape2, spacing2, axis=axis2)
-    # plt.plot(x1, doseV1)
-    # plt.plot(x2, doseV2)
-    # plt.show()
+
+    plt.plot(x1, doseV1)
+    plt.plot(x2, doseV2)
+    plt.show()
     for p in pointsV:
         # get dose at the position p [mm]
         cp1 = min(x1, key=lambda x: abs(x - p))
@@ -1432,3 +1434,4 @@ def check_diff_abs(value1, value2, tolerance, txt):
     s = f"{txt} {value1:.2f} vs {value2:.2f} -> {diff:.2f} (tol={tolerance})"
     gate.print_test(t, s)
     return t
+

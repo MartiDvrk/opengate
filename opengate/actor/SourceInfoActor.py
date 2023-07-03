@@ -39,7 +39,7 @@ class SourceInfoActor(g4.GateVActor, gate.ActorBase):
             }
         )
         self.tree = self.file[self.user_info.physics_list_name]
-        print(self.tree)
+        #print(self.tree)
 
     def BeginOfRunAction(self, run):
         print("Start run SourceInfoActor")

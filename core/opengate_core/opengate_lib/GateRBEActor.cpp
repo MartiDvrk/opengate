@@ -27,9 +27,9 @@
 
 // Mutex that will be used by thread to write in the edep/dose image
 // TODO
-// G4Mutex SetPixelMutex = G4MUTEX_INITIALIZER;
+G4Mutex SetPixelRBEMutex = G4MUTEX_INITIALIZER;
 
-GateRBEActor::GateRBEActor(py::dict &user_info) : GateVActor(user_info, false) {
+GateRBEActor::GateRBEActor(py::dict &user_info) : GateVActor(user_info, true) {
   // Create the image pointer
   // (the size and allocation will be performed on the py side)
   cpp_numerator_image = ImageType::New();
@@ -60,7 +60,7 @@ GateRBEActor::GateRBEActor(py::dict &user_info) : GateVActor(user_info, false) {
   }
 }
 
-void GateRBEActor::ActorInitialize() { emcalc = new G4EmCalculator; }
+void GateRBEActor::ActorInitialize() {}
 
 void GateRBEActor::BeginOfRunAction(const G4Run *run) {
   // Important ! The volume may have moved, so we re-attach each run
@@ -71,10 +71,8 @@ void GateRBEActor::BeginOfRunAction(const G4Run *run) {
   // compute volume of a dose voxel
   auto sp = cpp_numerator_image->GetSpacing();
   fVoxelVolume = sp[0] * sp[1] * sp[2];
-  static G4Material *water =
-      G4NistManager::Instance()->FindOrBuildMaterial(fotherMaterial);
-      
-  std::cout<<"Run: " << run->GetRunID() << " starts." <<std::endl;
+ 
+  //std::cout<<"Run: " << run->GetRunID() << " starts." <<std::endl;
 }
 
 void GateRBEActor::SteppingAction(G4Step *step) {
@@ -116,21 +114,17 @@ void GateRBEActor::SteppingAction(G4Step *step) {
   if (isInside) {
     // With mutex (thread)
     // TODO auto lock
-    // G4AutoLock mutex(&SetPixelMutex);
+    //
+    G4AutoLock mutex(&SetPixelRBEMutex);
     
     auto event_id =
           G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
-	std::cout<<"Event ID: " << event_id << std::endl;
+	//std::cout<<"Event ID: " << event_id << std::endl;
 
     // get edep in MeV (take weight into account)
     auto w = step->GetTrack()->GetWeight();
     auto edep = step->GetTotalEnergyDeposit() / CLHEP::MeV * w;
-    double dedx_cut = DBL_MAX;
-    // dedx
-    auto *current_material = step->GetPreStepPoint()->GetMaterial();
-    auto density = current_material->GetDensity() / CLHEP::g * CLHEP::cm3;
-    // double dedx_currstep = 0., dedx_water = 0.;
-    // double density_water = 1.0;
+  
     //  other material
     const G4ParticleDefinition *p = step->GetTrack()->GetParticleDefinition();
     
@@ -155,43 +149,26 @@ void GateRBEActor::SteppingAction(G4Step *step) {
         emcalc->ComputeElectronicDEDX(energy, p, current_material, dedx_cut) /
         CLHEP::MeV * CLHEP::mm;*/
 	auto charge = int(p->GetAtomicNumber());
-	auto mass = int(p->GetAtomicMass());
+	auto mass = p->GetAtomicMass();
 	auto table_value = GetValue(charge, energy/mass); //energy has unit?
 	auto alpha_currstep = fAlpha0 + fBeta*table_value;
 	
-	std::cout<< "energy:" << energy << ", mass: " << mass << std::endl;
-    std::cout << "Charge: " << charge << ", energy/mass: " << energy/mass << std::endl;
-    std::cout <<"z*_1D: " << table_value << ", alpha_step: " << alpha_currstep<< std::endl;
+	//std::cout<< "energy:" << energy << ", mass: " << mass << std::endl;
+    //std::cout << "Charge: " << charge << ", energy/mass: " << energy/mass << std::endl;
+    //std::cout <<"z*_1D: " << table_value << ", alpha_step: " << alpha_currstep<< std::endl;
 
 
     //auto steplength = step->GetStepLength() / CLHEP::mm;
     double scor_val_num = 0.;
     double scor_val_den = 0.;
 
-    if (fRBEtoOtherMaterial) {
-      auto density_water = water->GetDensity() / CLHEP::g * CLHEP::cm3;
-      auto dedx_water =
-          emcalc->ComputeElectronicDEDX(energy, p, water, dedx_cut) /
-          CLHEP::MeV * CLHEP::mm;
-      //auto SPR_otherMaterial = dedx_water / dedx_currstep;
-      //edep *= SPR_otherMaterial;
-      //dedx_currstep *= SPR_otherMaterial;
-    }
-	/*
-    if (fdoseAverage) {
-      scor_val_num = edep * dedx_currstep / CLHEP::MeV / CLHEP::MeV * CLHEP::mm;
-      scor_val_den = edep / CLHEP::MeV;
-    } else if (ftrackAverage) {
-      scor_val_num = steplength * dedx_currstep * w / CLHEP::MeV;
-      scor_val_den = steplength * w / CLHEP::mm;
-    }
-    */
+  
     scor_val_num = edep * alpha_currstep / CLHEP::mm;
     scor_val_den = edep / CLHEP::mm; 
     ImageAddValue<ImageType>(cpp_numerator_image, index, scor_val_num);
     ImageAddValue<ImageType>(cpp_denominator_image, index, scor_val_den);
     
-    std::cout << "Index: " << index << "is written in images. " << std::endl;
+    //std::cout << "Index: " << index << "is written in images. " << std::endl;
     
 
   } // else : outside the image
@@ -209,7 +186,7 @@ void GateRBEActor::CreateLookupTable(py::dict &user_info) {
 }
 
 double GateRBEActor::GetValue(int Z, float energy) {
-	std::cout << "GetValue: Z: " << Z << ", energy[MeV/u]: " << energy << std::endl;
+	//std::cout << "GetValue: Z: " << Z << ", energy[MeV/u]: " << energy << std::endl;
   // initalize value
   G4double y = 0;
   // get table values for the given Z
@@ -218,11 +195,11 @@ double GateRBEActor::GetValue(int Z, float energy) {
   G4DataVector *data = (*table)[Z - 1];
   // find the index of the lower bound energy to the given energy
   size_t bin = FindLowerBound(energy, energies);
-  std::cout << "interpolation bin: " << bin << std::endl;
+  //std::cout << "interpolation bin: " << bin << std::endl;
   G4LinInterpolation linearAlgo;
   // get table value for the given energy
   y = linearAlgo.Calculate(energy, bin, *energies, *data);
-  std::cout<<"interpolation output:" << y << std::endl;
+  //std::cout<<"interpolation output:" << y << std::endl;
 
   return y;
 }
@@ -236,8 +213,8 @@ size_t GateRBEActor::FindLowerBound(G4double x, G4DataVector *values) const {
 	return values->size() - 1;}
   while (lowerBound <= upperBound) {
     size_t midBin((lowerBound + upperBound) / 2);
-    std::cout<<"upper: "<<upperBound<<" lower: "<<lowerBound<<std::endl;
-    std::cout<<(*values)[midBin]<<std::endl;
+    //std::cout<<"upper: "<<upperBound<<" lower: "<<lowerBound<<std::endl;
+    //std::cout<<(*values)[midBin]<<std::endl;
     if (x < (*values)[midBin])
       upperBound = midBin - 1;
     else

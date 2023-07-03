@@ -14,11 +14,9 @@
 #include <pybind11/stl.h>
 
 #include "G4DataVector.hh"
-#include "G4NistManager.hh"
 
 namespace py = pybind11;
 
-class G4EmCalculator;
 
 class GateRBEActor : public GateVActor {
 
@@ -70,9 +68,6 @@ private:
 
   G4ThreeVector fInitialTranslation;
   std::string fHitType;
-
-  G4EmCalculator *emcalc;
-  G4Material *water;
 
   
 };
