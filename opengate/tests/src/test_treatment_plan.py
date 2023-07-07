@@ -10,7 +10,7 @@ from scipy.spatial.transform import Rotation
 def start_simulation(rt_plan_path):
     paths = gate.get_default_test_paths(__file__, "gate_test044_pbs")
     output_path = paths.output / "output_test051_rtp"
-    ref_path = paths.output_ref / "test051_ref"
+    ref_path = paths.output_ref / "test059_ref"
 
     # create output dir, if it doesn't exist
     if not os.path.isdir(output_path):
@@ -132,6 +132,7 @@ def start_simulation(rt_plan_path):
     #     [-1024, -300, "G4_AIR"],
     #     [-300, 3000, "G4_WATER"],
     # ]
+    sim.set_max_step_size(patient.name, 0.8)
 
     tol = 0.05 * gcm3
     patient.voxel_materials, materials = gate.HounsfieldUnit_to_material(
@@ -154,7 +155,7 @@ def start_simulation(rt_plan_path):
 
     ## source
     nplan = treatment.beamset_info.mswtot
-    nSim = 400000  # 328935  # particles to simulate per beam
+    nSim = 4000  # 328935  # particles to simulate per beam
     tps = gate.TreatmentPlanSource("RT_plan", sim)
     tps.set_beamline_model(IR2HBL)
     tps.set_particles_to_simulate(nSim)

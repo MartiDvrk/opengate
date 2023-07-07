@@ -71,3 +71,14 @@ from .physics.PhysicsManager import *
 from .physics.PhysicsEngine import *
 from .physics.Region import *
 from .physics.PhysicsConstructors import UserLimitsPhysics
+
+# Dicom
+from .dicom.radiation_treatment import *
+from .dicom.bounding_box import *
+from .dicom.ct_image import *
+from .dicom.gamma_index import *
+from .dicom.helpers_dcm import *
+from .dicom.roi_utils import *
+from .dicom.rt_dose import *
+from .dicom.rt_plan import *
+from .dicom.rt_structs import *
