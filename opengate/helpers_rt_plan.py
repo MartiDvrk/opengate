@@ -626,56 +626,72 @@ class beamset_info(object):
         return s
 
 
-def spots_info_from_txt(txtFile, ionType):
+def spots_info_from_txt(txtFile, ionType, beam_nr):
     # initialize empty variables
     nFields = 0
-    ntot = []
+    n_beam = 0
     energies = []
     nSpots = []
     spots = []
     start_index = []
     G = 0
+    found_field = False
 
     # read  content
     with open(txtFile, "r") as f:
         lines = f.readlines()
 
     # get plan's info
+    # TODO: make function to check line tag
     for i, line in enumerate(lines):
-        if line.startswith("###GantryAngle"):
-            l = lines[i + 1].split("\n")[0]
-            G = int(l)
-        if line.startswith("##NumberOfFields"):
+        if check_plan_tag(line, "NumberOfFields"):
             l = lines[i + 1].split("\n")[0]
             nFields = int(l)
-        if line.startswith("###FinalCumulativeMeterSetWeight"):
-            l = lines[i + 1].split("\n")[0]
-            ntot.append(float(l))
-        if line.startswith("####Energy"):
-            l = lines[i + 1].split("\n")[0]
-            energies.append(float(l))
-        if line.startswith("####NbOfScannedSpots"):
-            l = lines[i + 1].split("\n")[0]
-            nSpots.append(int(l))
-        if line.startswith("####X Y Weight"):
-            start_index.append(i + 1)
+            if beam_nr > nFields:
+                raise ValueError(
+                    "requested beam number higher than number of beams in the beamset"
+                )
+        if check_plan_tag(line, "FIELD-DESCRIPTION"):
+            found_field = False
+        if check_plan_tag(line, "FieldID"):
+            fieldID = int(lines[i + 1].split("\n")[0])
+            if fieldID == beam_nr:
+                found_field = True
+        if found_field:
+            if check_plan_tag(line, "GantryAngle"):
+                l = lines[i + 1].split("\n")[0]
+                G = int(l)
+            if check_plan_tag(line, "FinalCumulativeMeterSetWeight"):
+                l = lines[i + 1].split("\n")[0]
+                n_beam = float(l)
+            if check_plan_tag(line, "Energy"):
+                l = lines[i + 1].split("\n")[0]
+                energies.append(float(l))
+            if check_plan_tag(line, "NbOfScannedSpots"):
+                l = lines[i + 1].split("\n")[0]
+                nSpots.append(int(l))
+            if check_plan_tag(line, "X Y Weight"):
+                start_index.append(i + 1)
 
-    np = sum(ntot)
-    for k in range(nFields):
-        # np = ntot[k]
-        for i in range(len(energies)):
-            e = energies[i]
-            print(f"ENERGY: {e}")
-            start = start_index[i]
-            end = start_index[i] + nSpots[i]
-            for j in range(start, end):
-                l = lines[j].split("\n")[0].split()
-                spot = spot_info(float(l[0]), float(l[1]), float(l[2]), e)
-                spot.beamFraction = float(l[2]) / np
-                spot.particle_name = ionType
-                spots.append(spot)
+    for i in range(len(energies)):
+        e = energies[i]
+        print(f"ENERGY: {e}")
+        start = start_index[i]
+        end = start_index[i] + nSpots[i]
+        for j in range(start, end):
+            l = lines[j].split("\n")[0].split()
+            spot = spot_info(float(l[0]), float(l[1]), float(l[2]), e)
+            spot.beamFraction = float(l[2]) / n_beam
+            spot.particle_name = ionType
+            spots.append(spot)
 
-    return spots, np, energies, G
+    return spots, n_beam, energies, G
+
+
+def check_plan_tag(txt_line, tag):
+    txt_line = txt_line.strip().lower()
+    tag = tag.strip().lower()
+    return tag in txt_line
 
 
 def get_spots_from_beamset(beamset):
@@ -692,6 +708,22 @@ def get_spots_from_beamset(beamset):
                 )  # nr particles planned for the spot/tot particles planned for the beam
                 spot.particle_name = rad_type
                 spots_array.append(spot)
+    return spots_array
+
+
+def get_spots_from_beamset_beam(beamset, beam_nr):
+    rad_type = beamset.bs_info["Radiation Type Opengate"]
+    spots_array = []
+    beam = beamset.beams[beam_nr]
+    mswtot = beam.mswtot
+    for energy_layer in beam.layers:
+        for spot in energy_layer.spots:
+            nPlannedSpot = spot.w
+            spot.beamFraction = (
+                nPlannedSpot / mswtot
+            )  # nr particles planned for the spot/tot particles planned for the beam
+            spot.particle_name = rad_type
+            spots_array.append(spot)
     return spots_array
 
 

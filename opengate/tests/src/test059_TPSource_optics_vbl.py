@@ -104,7 +104,7 @@ IR2VBL.epsilon_y_coeffs = [-8.757558864087579e-08, 0.00250212397239695]
 # nSim = 328935  # particles to simulate per beam
 nSim = 20000
 spots, ntot, energies, G = gate.spots_info_from_txt(
-    ref_path / "TreatmentPlan4Gate-gate_test59tps_v.txt", "ion 6 12"
+    ref_path / "TreatmentPlan4Gate-gate_test59tps_v.txt", "ion 6 12", beam_nr=1
 )
 tps = gate.TreatmentPlanSource("RT_plan", sim)
 tps.set_beamline_model(IR2VBL)

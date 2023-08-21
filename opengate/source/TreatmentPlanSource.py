@@ -23,10 +23,10 @@ class TreatmentPlanSource:
     def set_spots(self, spots):
         self.spots = spots
 
-    def set_spots_from_rtplan(self, rt_plan_path):
+    def set_spots_from_rtplan(self, rt_plan_path, beam_nr):
         beamset = gate.beamset_info(rt_plan_path)
-        gantry_angle = beamset.beam_angles[0]
-        spots = gate.get_spots_from_beamset(beamset)
+        gantry_angle = beamset.beam_angles[beam_nr]
+        spots = gate.get_spots_from_beamset_beam(beamset, beam_nr)
         self.spots = spots
         self.rotation = Rotation.from_euler("z", gantry_angle, degrees=True)
 
