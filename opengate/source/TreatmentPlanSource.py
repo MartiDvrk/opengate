@@ -33,7 +33,7 @@ class TreatmentPlanSource:
     def set_beamline_model(self, beamline):
         self.beamline_model = beamline
 
-    def initialize_tpsource(self):
+    def initialize_tpsource(self, flat_generation=False):
         # some alias
         spots_array = self.spots
         sim = self.sim
@@ -54,8 +54,12 @@ class TreatmentPlanSource:
         tot_sim_particles = 0
         # initialize a pencil beam for each spot
         for i, spot in enumerate(spots_array):
-            # simulate a fraction of the beam particles for this spot
-            nspot = np.round(spot.beamFraction * nSim)
+            if flat_generation:
+                # simualte same number of particles for each spot
+                nspot = nSim
+            else:
+                # simulate a fraction of the beam particles for this spot
+                nspot = np.round(spot.beamFraction * nSim)
             if nspot == 0:
                 continue
             tot_sim_particles += nspot
@@ -82,7 +86,10 @@ class TreatmentPlanSource:
             source.position.rotation = self._get_pbs_rotation(spot)
 
             # add weight
-            # source.weight = -1
+            if flat_generation:
+                source.weight = spot.beamFraction
+
+            # set number of particles
             source.n = nspot
 
             # set optics parameters

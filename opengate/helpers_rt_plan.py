@@ -433,12 +433,12 @@ class beamset_info(object):
                 )
             )
         # self._get_rds()
-        if hasattr(self._rp, "DoseReferenceSequence"):
-            sequence_check(self._rp, "DoseReferenceSequence", 1, 1)
-            if hasattr(self._rp.DoseReferenceSequence[0], "ReferencedROINumber"):
-                self._dose_roinumber = int(
-                    self._rp.DoseReferenceSequence[0].ReferencedROINumber
-                )
+        # if hasattr(self._rp, "DoseReferenceSequence"):
+        #     sequence_check(self._rp, "DoseReferenceSequence", 1, 1)
+        #     if hasattr(self._rp.DoseReferenceSequence[0], "ReferencedROINumber"):
+        #         self._dose_roinumber = int(
+        #             self._rp.DoseReferenceSequence[0].ReferencedROINumber
+        #         )
         if self._dose_roinumber is None:
             logger.info(
                 "no target ROI specified (probably because of missing DoseReferenceSequence)"
@@ -675,7 +675,7 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
 
     for i in range(len(energies)):
         e = energies[i]
-        print(f"ENERGY: {e}")
+        # print(f"ENERGY: {e}")
         start = start_index[i]
         end = start_index[i] + nSpots[i]
         for j in range(start, end):

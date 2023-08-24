@@ -118,7 +118,7 @@ beamline.epsilon_y_coeffs = [0.00249161e-3]
 # tps
 nSim = 60000  # particles to simulate per beam
 spots, ntot, energies, G = gate.spots_info_from_txt(
-    ref_path / "TreatmentPlan2Spots.txt", "proton"
+    ref_path / "TreatmentPlan2Spots.txt", "proton", beam_nr=1
 )
 tps = gate.TreatmentPlanSource("test", sim)
 tps.set_beamline_model(beamline)
@@ -177,8 +177,8 @@ test = (
 # check second spot
 test = (
     gate.assert_images(
-        output_path / mhd_1,
-        ref_path / mhd_1,
+        output_path / mhd_2,
+        ref_path / mhd_2,
         stat,
         tolerance=70,
         ignore_value=0,
