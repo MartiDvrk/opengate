@@ -165,8 +165,8 @@ test = True
 # check first spot
 test = (
     gate.assert_images(
-        output_path / mhd_1,
         ref_path / mhd_1,
+        output_path / mhd_1,
         stat,
         tolerance=70,
         ignore_value=0,

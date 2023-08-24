@@ -7,7 +7,9 @@ import opengate.contrib.phantom_nema_iec_body as gate_iec
 from scipy.spatial.transform import Rotation
 from opengate_core import G4RegionStore
 
-paths = gate.get_default_test_paths(__file__, "gate_test029_volume_time_rotation")
+paths = gate.get_default_test_paths(
+    __file__, "gate_test029_volume_time_rotation", "test029"
+)
 
 
 def check_production_cuts(simulation_engine):
@@ -48,7 +50,7 @@ def create_simulation(sim, aa_flag):
     ui.g4_verbose = False
     ui.visu = False
     ui.number_of_threads = 1
-    ui.random_seed = 123456789
+    ui.random_seed = 23456789
 
     # units
     m = gate.g4_units("m")
@@ -78,7 +80,7 @@ def create_simulation(sim, aa_flag):
     spect.rotation = (rot * initial_rot).as_matrix()
 
     # iec phantom
-    gate_iec.add_phantom(sim)
+    gate_iec.add_iec_phantom(sim)
 
     # two sources (no background yet)
     activity_concentration = 5000 * BqmL / ui.number_of_threads
@@ -175,7 +177,7 @@ def create_simulation(sim, aa_flag):
     cc.output = hc.output
 
     # projections
-    proj = sim.add_actor("HitsProjectionActor", "Projection")
+    proj = sim.add_actor("DigitizerProjectionActor", "Projection")
     proj.mother = hc.mother
     proj.input_digi_collections = ["Singles", "scatter", "peak140"]
     proj.spacing = [4.41806 * mm, 4.41806 * mm]
