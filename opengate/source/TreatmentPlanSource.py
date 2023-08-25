@@ -56,12 +56,13 @@ class TreatmentPlanSource:
         for i, spot in enumerate(spots_array):
             if flat_generation:
                 # simualte same number of particles for each spot
-                nspot = nSim
+                nspot = nSim / len(spots_array)
             else:
                 # simulate a fraction of the beam particles for this spot
                 nspot = np.round(spot.beamFraction * nSim)
             if nspot == 0:
                 continue
+            print(f"spot {i}: {nspot} particles")
             tot_sim_particles += nspot
             source = sim.add_source("PencilBeamSource", f"{self.name}_spot_{i}")
 
@@ -87,7 +88,7 @@ class TreatmentPlanSource:
 
             # add weight
             if flat_generation:
-                source.weight = spot.beamFraction
+                source.weight = spot.beamFraction * len(spots_array)
 
             # set number of particles
             source.n = nspot
