@@ -89,6 +89,7 @@ class TreatmentPlanSource:
             # add weight
             if flat_generation:
                 source.weight = spot.beamFraction * len(spots_array)
+                print(f"{source.weight = }")
 
             # set number of particles
             source.n = nspot

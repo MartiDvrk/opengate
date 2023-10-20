@@ -122,7 +122,7 @@ if __name__ == "__main__":
     tps.set_beamline_model(beamline)
     tps.set_particles_to_simulate(nSim)
     tps.set_spots(spots)
-    tps.rotation = Rotation.from_euler("x", 90, degrees=True)
+    tps.rotation = Rotation.from_euler("x", G, degrees=True)
     tps.initialize_tpsource()
 
     # add stat actor
