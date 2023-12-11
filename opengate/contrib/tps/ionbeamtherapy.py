@@ -11,6 +11,7 @@ import os
 import re
 import numpy as np
 from scipy.spatial.transform import Rotation
+import opengate as gate
 
 
 # from utils.dose_info import dose_info
@@ -773,8 +774,9 @@ class TreatmentPlanSource:
     def set_beamline_model(self, beamline):
         self.beamline_model = beamline
 
-    def initialize_tpsource(self, flat_generation=False):
+    def initialize_tpsource(self, flat_generation=False, activity=False):
         # some alias
+        Bq = gate.g4_units.Bq
         spots_array = self.spots
         sim = self.sim
         nSim = self.n_sim
@@ -802,7 +804,6 @@ class TreatmentPlanSource:
                 nspot = np.round(spot.beamFraction * nSim)
             if nspot == 0:
                 continue
-            print(f"spot {i}: {nspot} particles")
             tot_sim_particles += nspot
             source = sim.add_source("IonPencilBeamSource", f"{self.name}_spot_{i}")
 
@@ -832,7 +833,10 @@ class TreatmentPlanSource:
                 print(f"{source.weight = }")
 
             # set number of particles
-            source.n = nspot
+            if activity:
+                source.activity = nspot*Bq
+            else:
+                source.n = nspot
 
             # set optics parameters
             source.direction.partPhSp_x = [
