@@ -263,11 +263,13 @@ double GateDoseActor::ComputeMeanUncertainty() {
   int n_voxel_unc = 0;
   double n_threads = NbOfThreads;
   double n_tot_events = NbOfEvent;
+  std::cout << "n_tot_events: " << n_tot_events << std::endl;
   if (NbOfThreads == 0) {
     n_threads = 1.0;
   }
   double max_edep = GetMaxValueOfImage(cpp_edep_image);
-
+  std::cout << "max_edep: " << max_edep << std::endl;
+  
   for (edep_iterator3D.GoToBegin(); !edep_iterator3D.IsAtEnd();
        ++edep_iterator3D) {
     Image3DType::IndexType index_f = edep_iterator3D.GetIndex();
@@ -284,6 +286,7 @@ double GateDoseActor::ComputeMeanUncertainty() {
       mean_unc += unc_i;
     }
   };
+  std::cout << "n_voxel_unc: " << n_voxel_unc << std::endl;
   if (n_voxel_unc > 0) {
     mean_unc = mean_unc / n_voxel_unc;
   } else {
