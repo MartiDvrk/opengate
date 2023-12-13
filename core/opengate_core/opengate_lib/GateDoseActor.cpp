@@ -260,12 +260,14 @@ double GateDoseActor::ComputeMeanUncertainty() {
   itk::ImageRegionIterator<Image3DType> edep_iterator3D(
       cpp_edep_image, cpp_edep_image->GetLargestPossibleRegion());
   Image3DType::PixelType mean_unc;
-  int n_voxel_unc = 0;
-  double n_threads = NbOfThreads;
-  double n_tot_events = NbOfEvent;
-  std::cout << "n_tot_events: " << n_tot_events << std::endl;
-  if (NbOfThreads == 0) {
-    n_threads = 1.0;
+  int n_voxel_unc = 0; 
+  double n = 2.0;
+  if (fcpImageForThreadsFlag){n = NbOfThreads;}
+  else {n = NbOfThreads;}
+  
+  std::cout << "n_tot_events: " << NbOfEvent << std::endl;
+  if (n < 2.0) {
+    n = 2.0;
   }
   double max_edep = GetMaxValueOfImage(cpp_edep_image);
   std::cout << "max_edep: " << max_edep << std::endl;
@@ -276,14 +278,14 @@ double GateDoseActor::ComputeMeanUncertainty() {
     Image3DType::PixelType val = cpp_edep_image->GetPixel(index_f);
 
     if (val > max_edep * threshEdepPerc) {
-      val /= n_threads;
+      val /= n;
       n_voxel_unc++;
       Image3DType::PixelType val_squared_mean =
-          cpp_square_image->GetPixel(index_f) / n_threads;
+          cpp_square_image->GetPixel(index_f) / n;
       //std::cout << "edep: " << val << std::endl;
       //std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
       Image3DType::PixelType unc_i =
-          (1 / (n_threads - 1)) * (val_squared_mean - pow(val, 2));
+          (1.0 / (n - 1.0)) * (val_squared_mean - pow(val, 2));
           
       if (unc_i < 0 ){
           std::cout << "unc_i: " << unc_i << std::endl;
