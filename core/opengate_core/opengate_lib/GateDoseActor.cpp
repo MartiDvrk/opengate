@@ -256,7 +256,7 @@ void GateDoseActor::SteppingAction(G4Step *step) {
 }
 
 double GateDoseActor::ComputeMeanUncertainty() {
-  // G4AutoLock mutex(&ComputeUncertaintyMutex);
+  G4AutoLock mutex(&ComputeUncertaintyMutex);
   itk::ImageRegionIterator<Image3DType> edep_iterator3D(
       cpp_edep_image, cpp_edep_image->GetLargestPossibleRegion());
   Image3DType::PixelType mean_unc;
@@ -284,7 +284,20 @@ double GateDoseActor::ComputeMeanUncertainty() {
       //std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
       Image3DType::PixelType unc_i =
           (1 / (n_threads - 1)) * (val_squared_mean - pow(val, 2));
+          
+      if (unc_i < 0 ){
+          std::cout << "unc_i: " << unc_i << std::endl;
+          std::cout << "edep: " << val << std::endl;
+          std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
+      }
+      
       unc_i = sqrt(unc_i) / (val);
+      
+      if (unc_i > 100){
+          std::cout << "unc_i: " << unc_i << std::endl;
+          std::cout << "edep: " << val << std::endl;
+          std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
+      }
       mean_unc += unc_i;
     }
   };
