@@ -280,6 +280,8 @@ double GateDoseActor::ComputeMeanUncertainty() {
       n_voxel_unc++;
       Image3DType::PixelType val_squared_mean =
           cpp_square_image->GetPixel(index_f) / n_threads;
+      //std::cout << "edep: " << val << std::endl;
+      //std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
       Image3DType::PixelType unc_i =
           (1 / (n_threads - 1)) * (val_squared_mean - pow(val, 2));
       unc_i = sqrt(unc_i) / (val);
@@ -287,12 +289,12 @@ double GateDoseActor::ComputeMeanUncertainty() {
     }
   };
   std::cout << "n_voxel_unc: " << n_voxel_unc << std::endl;
-  if (n_voxel_unc > 0) {
+  if (n_voxel_unc > 0 && mean_unc > 0) {
     mean_unc = mean_unc / n_voxel_unc;
   } else {
     mean_unc = 1.;
   }
-  std::cout << "unc: " << mean_unc << std::endl;
+//   std::cout << "unc: " << mean_unc << std::endl;
   return mean_unc;
 }
 
@@ -358,6 +360,7 @@ void GateDoseActor::EndOfRunAction(const G4Run *run) { ComputeSquareImage(); }
 int GateDoseActor::EndOfRunActionMasterThread(int run_id) {
   if (goalUncertainty != 0.0) {
     double unc = ComputeMeanUncertainty();
+    std::cout << "unc: " << unc << std::endl;
     if (unc <= goalUncertainty) {
       return 1;
     } else {
