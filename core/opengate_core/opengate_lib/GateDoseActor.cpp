@@ -296,7 +296,7 @@ double GateDoseActor::ComputeMeanUncertainty() {
   int n_voxel_unc = 0; 
   double n = 2.0;
   if (fcpImageForThreadsFlag){n = NbOfThreads;}
-  else {n = NbOfThreads;}
+  else {n = NbOfEvent;}
   
   std::cout << "n_tot_events: " << NbOfEvent << std::endl;
   if (n < 2.0) {
