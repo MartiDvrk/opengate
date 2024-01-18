@@ -128,8 +128,8 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             self.user_info.ste_of_mean = True
         if self.user_info.ste_of_mean or self.user_info.ste_of_mean_unbiased:
             self.user_info.use_more_RAM = True
-        if self.user_info.goal_uncertainty:
-            self.user_info.uncertainty = True
+        # if self.user_info.goal_uncertainty:
+        #     self.user_info.uncertainty = True
         if self.user_info.uncertainty and self.user_info.use_more_RAM:
             self.user_info.ste_of_mean = True
         if (

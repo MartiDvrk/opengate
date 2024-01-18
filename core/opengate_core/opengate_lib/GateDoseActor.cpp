@@ -19,6 +19,8 @@
 #include <itkAddImageFilter.h>
 #include <itkImageRegionIterator.h>
 #include <math.h>
+#include <vector>
+#include <queue>
 
 #include "G4Electron.hh"
 #include "G4EmCalculator.hh"
@@ -78,9 +80,9 @@ GateDoseActor::GateDoseActor(py::dict &user_info)
 void GateDoseActor::ActorInitialize() {
   NbOfThreads = G4Threading::GetNumberOfRunningWorkerThreads();
 
-  if (goalUncertainty != 0.0) {
-    fUncertaintyFlag = true;
-  }
+//   if (goalUncertainty != 0.0) {
+//     fUncertaintyFlag = true;
+//   }
   if (fUncertaintyFlag) {
     fSquareFlag = true;
   }
@@ -90,6 +92,10 @@ void GateDoseActor::ActorInitialize() {
   if (fDoseFlag and !fOnFlyCalcFlag) {
     fDoseFlag = false;
   }
+    std::cout<<"fcpImageForThreadsFlag: "<<fcpImageForThreadsFlag<<std::endl;
+    std::cout<<"fUncertaintyFlag: "<<fUncertaintyFlag<<std::endl;
+    std::cout<<"fSTEofMeanFlag: "<<fSTEofMeanFlag<<std::endl;
+    std::cout<<"fSquareFlag: "<<fSquareFlag<<std::endl;
 }
 
 void GateDoseActor::BeginOfRunActionMasterThread(int run_id) {
@@ -175,6 +181,11 @@ void GateDoseActor::SteppingAction(G4Step *step) {
   auto w = step->GetTrack()->GetWeight();
   auto edep = step->GetTotalEnergyDeposit() / CLHEP::MeV * w;
   auto scoring_quantity = edep;
+  
+    Image3DType::IndexType weird_pxl_index;
+     weird_pxl_index[0] = 102;
+     weird_pxl_index[1] = 73;
+     weird_pxl_index[2] = 253;
 
   if (fDoseFlag) {
     // Compute the dose in Gray
@@ -183,7 +194,19 @@ void GateDoseActor::SteppingAction(G4Step *step) {
     auto dose = edep / density / fVoxelVolume / CLHEP::gray;
 
     scoring_quantity = dose;
+    
+    Image3DType::IndexType index;
+    bool isInside = cpp_edep_image->TransformPhysicalPointToIndex(point, index);
+    
+    if(index[0]==weird_pxl_index[0] && index[1]==weird_pxl_index[1] && index[2]==weird_pxl_index[2]){
+        std::cout<<"edep max voxel step: "<<edep<<std::endl;
+        std::cout<<"weight: "<<w<<std::endl;
+        std::cout<<"current_material: "<<current_material<<std::endl;
+        std::cout<<"dose: "<<dose<<std::endl;
+        
+    }
   }
+  
 
   if (fToWaterFlag) {
     // convert to water either dose or edep, depending on the selected value
@@ -216,10 +239,20 @@ void GateDoseActor::SteppingAction(G4Step *step) {
       auto density_ratio = density / density_water;
       scoring_quantity *= density_ratio;
     }
+    Image3DType::IndexType index;
+    bool isInside = cpp_edep_image->TransformPhysicalPointToIndex(point, index);
+    
+    if(index[0]==weird_pxl_index[0] && index[1]==weird_pxl_index[1] && index[2]==weird_pxl_index[2]){
+
+        std::cout<<"dedx_currstep: "<<dedx_currstep<<std::endl;
+        
+    }
   }
+  
 
   Image3DType::IndexType index;
   bool isInside = cpp_edep_image->TransformPhysicalPointToIndex(point, index);
+
 
   // set value
   if (isInside) {
@@ -259,7 +292,7 @@ double GateDoseActor::ComputeMeanUncertainty() {
   G4AutoLock mutex(&ComputeUncertaintyMutex);
   itk::ImageRegionIterator<Image3DType> edep_iterator3D(
       cpp_edep_image, cpp_edep_image->GetLargestPossibleRegion());
-  Image3DType::PixelType mean_unc;
+  double mean_unc = 0.0;
   int n_voxel_unc = 0; 
   double n = 2.0;
   if (fcpImageForThreadsFlag){n = NbOfThreads;}
@@ -275,19 +308,18 @@ double GateDoseActor::ComputeMeanUncertainty() {
   for (edep_iterator3D.GoToBegin(); !edep_iterator3D.IsAtEnd();
        ++edep_iterator3D) {
     Image3DType::IndexType index_f = edep_iterator3D.GetIndex();
-    Image3DType::PixelType val = cpp_edep_image->GetPixel(index_f);
+    double val = cpp_edep_image->GetPixel(index_f);
 
     if (val > max_edep * threshEdepPerc) {
       val /= n;
       n_voxel_unc++;
-      Image3DType::PixelType val_squared_mean =
+      double val_squared_mean =
           cpp_square_image->GetPixel(index_f) / n;
-      //std::cout << "edep: " << val << std::endl;
-      //std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
-      Image3DType::PixelType unc_i =
+          
+      double unc_i =
           (1.0 / (n - 1.0)) * (val_squared_mean - pow(val, 2));
           
-      if (unc_i < 0 ){
+      if (unc_i < 0){
           std::cout << "unc_i: " << unc_i << std::endl;
           std::cout << "edep: " << val << std::endl;
           std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
@@ -295,7 +327,7 @@ double GateDoseActor::ComputeMeanUncertainty() {
       
       unc_i = sqrt(unc_i) / (val);
       
-      if (unc_i > 100){
+      if (unc_i > 1){
           std::cout << "unc_i: " << unc_i << std::endl;
           std::cout << "edep: " << val << std::endl;
           std::cout << "edep_squared_mean: " << val_squared_mean << std::endl;
@@ -337,6 +369,12 @@ void GateDoseActor::ComputeSquareImage() {
         ImageAddValue<Image3DType>(cpp_square_image, index_f, pixelValue_cpp);
       }
     }
+    // check weird pixel behaviour 
+    Image3DType::IndexType weird_pxl_index;
+     weird_pxl_index[0] = 102;
+     weird_pxl_index[1] = 73;
+     weird_pxl_index[2] = 253;
+ std::cout<< "Edep value thread local: "<< std::setprecision(8) << data.edep_worker_flatimg[sub2ind(weird_pxl_index)]<<std::endl;
 
   } else {
     if (fSquareFlag) {
@@ -390,12 +428,29 @@ double GateDoseActor::GetMaxValueOfImage(Image3DType::Pointer imageP) {
   itk::ImageRegionIterator<Image3DType> iterator3D(
       imageP, imageP->GetLargestPossibleRegion());
   Image3DType::PixelType max = 0;
+  Image3DType::IndexType index_max;
+  // keep track of the 10 highest values of the image
+  std::priority_queue<double, std::vector<double>, std::greater<double>> pq;
   for (iterator3D.GoToBegin(); !iterator3D.IsAtEnd(); ++iterator3D) {
     Image3DType::IndexType index_f = iterator3D.GetIndex();
     Image3DType::PixelType val = imageP->GetPixel(index_f);
     if (val > max) {
       max = val;
+      index_max = index_f;
+      pq.push(max);
+      if (pq.size() > 10) {
+                pq.pop();
+            }
     }
   }
+  std::cout<<"index_max "<<index_max<< std::endl;
+//   for (int i=0; i < 10; i++){
+//       std::cout << pq.top() << " ";
+//       pq.pop();
+//   }
+  while (!pq.empty()) {
+        std::cout << pq.top() << " ";
+        pq.pop();
+    }
   return max;
 }
