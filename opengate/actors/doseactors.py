@@ -124,14 +124,13 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             or self.user_info.goal_uncertainty > 1.0
         ):
             raise ValueError("goal uncertainty must be > 0 and < 1")
+            
         if self.user_info.ste_of_mean_unbiased:
             self.user_info.ste_of_mean = True
-        if self.user_info.ste_of_mean or self.user_info.ste_of_mean_unbiased:
+            
+        if self.user_info.ste_of_mean:
             self.user_info.use_more_RAM = True
-        # if self.user_info.goal_uncertainty:
-        #     self.user_info.uncertainty = True
-        if self.user_info.uncertainty and self.user_info.use_more_RAM:
-            self.user_info.ste_of_mean = True
+
         if (
             self.user_info.ste_of_mean == True
             and self.simulation.user_info.number_of_threads <= 4
@@ -139,6 +138,18 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             raise ValueError(
                 "number_of_threads should be > 4 when using dose actor with ste_of_mean flag enabled"
             )
+            
+        if self.user_info.goal_uncertainty:
+            if self.user_info.uncertainty == False and self.user_info.ste_of_mean == False:
+                raise ValueError(
+                    "To set un uncertainty goal, set at least one of this flags to True: uncertainty, ste_of_mean"
+                )
+
+        if self.user_info.uncertainty == True and self.user_info.ste_of_mean == True:
+            raise ValueError(
+                "select only one way to calculate uncertainty: uncertainty or ste_of_mean"
+            )
+            
         super().initialize(volume_engine)
         # create itk image (py side)
         size = np.array(self.user_info.size)

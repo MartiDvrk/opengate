@@ -182,10 +182,6 @@ void GateDoseActor::SteppingAction(G4Step *step) {
   auto edep = step->GetTotalEnergyDeposit() / CLHEP::MeV * w;
   auto scoring_quantity = edep;
   
-    Image3DType::IndexType weird_pxl_index;
-     weird_pxl_index[0] = 102;
-     weird_pxl_index[1] = 73;
-     weird_pxl_index[2] = 253;
 
   if (fDoseFlag) {
     // Compute the dose in Gray
@@ -198,13 +194,6 @@ void GateDoseActor::SteppingAction(G4Step *step) {
     Image3DType::IndexType index;
     bool isInside = cpp_edep_image->TransformPhysicalPointToIndex(point, index);
     
-    if(index[0]==weird_pxl_index[0] && index[1]==weird_pxl_index[1] && index[2]==weird_pxl_index[2]){
-        std::cout<<"edep max voxel step: "<<edep<<std::endl;
-        std::cout<<"weight: "<<w<<std::endl;
-        std::cout<<"current_material: "<<current_material<<std::endl;
-        std::cout<<"dose: "<<dose<<std::endl;
-        
-    }
   }
   
 
@@ -242,11 +231,6 @@ void GateDoseActor::SteppingAction(G4Step *step) {
     Image3DType::IndexType index;
     bool isInside = cpp_edep_image->TransformPhysicalPointToIndex(point, index);
     
-    if(index[0]==weird_pxl_index[0] && index[1]==weird_pxl_index[1] && index[2]==weird_pxl_index[2]){
-
-        std::cout<<"dedx_currstep: "<<dedx_currstep<<std::endl;
-        
-    }
   }
   
 
@@ -369,12 +353,7 @@ void GateDoseActor::ComputeSquareImage() {
         ImageAddValue<Image3DType>(cpp_square_image, index_f, pixelValue_cpp);
       }
     }
-    // check weird pixel behaviour 
-    Image3DType::IndexType weird_pxl_index;
-     weird_pxl_index[0] = 102;
-     weird_pxl_index[1] = 73;
-     weird_pxl_index[2] = 253;
- std::cout<< "Edep value thread local: "<< std::setprecision(8) << data.edep_worker_flatimg[sub2ind(weird_pxl_index)]<<std::endl;
+
 
   } else {
     if (fSquareFlag) {
@@ -443,11 +422,7 @@ double GateDoseActor::GetMaxValueOfImage(Image3DType::Pointer imageP) {
             }
     }
   }
-  std::cout<<"index_max "<<index_max<< std::endl;
-//   for (int i=0; i < 10; i++){
-//       std::cout << pq.top() << " ";
-//       pq.pop();
-//   }
+
   while (!pq.empty()) {
         std::cout << pq.top() << " ";
         pq.pop();
