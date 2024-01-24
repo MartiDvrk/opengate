@@ -23,10 +23,9 @@ def run_sim(N_events: int, N_threads: int, N_voxels: int, paths):
     N_per_trhead = int(np.round(Ntotal / ui.number_of_threads))
     # units
     m = gate.g4_units.m
-    mm = gate.g4_units.mm
     cm = gate.g4_units.cm
+    mm = gate.g4_units.mm
     km = gate.g4_units.km
-    nm = gate.g4_units.nm
     MeV = gate.g4_units.MeV
     Bq = gate.g4_units.Bq
     kBq = 1000 * Bq
@@ -47,8 +46,7 @@ def run_sim(N_events: int, N_threads: int, N_voxels: int, paths):
     phantom.color = [0, 0, 1, 1]
 
     # physics
-    p = sim.get_physics_user_info()
-    p.physics_list_name = "QGSP_BIC_EMY"
+    sim.physics_manager.physics_list_name = "QGSP_BIC_EMY"
     sim.physics_manager.global_production_cuts.all = 1000 * km
 
     # default source for tests
@@ -81,7 +79,7 @@ def run_sim(N_events: int, N_threads: int, N_voxels: int, paths):
     doseActor.spacing = dose_spacing
     doseActor.hit_type = "random"
     doseActor.dose = False
-    doseActor.use_more_RAM = False
+    doseActor.use_more_ram = False
     doseActor.ste_of_mean = False
     doseActor.uncertainty = False
     doseActor.square = False
@@ -97,7 +95,7 @@ def run_sim(N_events: int, N_threads: int, N_voxels: int, paths):
     doseActor.spacing = dose_spacing
     doseActor.hit_type = "random"
     doseActor.dose = False
-    doseActor.use_more_RAM = True
+    doseActor.use_more_ram = True
     doseActor.ste_of_mean = False
     doseActor.uncertainty = False
     doseActor.square = False

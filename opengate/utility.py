@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sc
 from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 import random
@@ -32,6 +33,12 @@ def assert_equal_dic(d1, d2, name=""):
     for k in d2:
         if not k in d1:
             fatal(f"ERROR, additional key {k} in {name}")
+
+
+def ensure_directory_exists(directory):
+    p = Path(directory)
+    if p.exists() is False:
+        p.mkdir(parents=True)
 
 
 g4_units = Box()
@@ -122,7 +129,7 @@ def read_mac_file_to_commands(filename):
     # read a file located into the 'mac' folder of the source code
     # return a list of commands
     resource_package = __name__
-    resource_path = "/".join(("mac", filename))  # Do not use os.path.join()
+    resource_path = "/".join(("mac", filename))  # Do not use os.filename.join()
     template = pkg_resources.resource_string(resource_package, resource_path)
     c = template.decode("utf-8")
     commands = []
@@ -135,7 +142,7 @@ def read_mac_file_to_commands(filename):
     return commands
 
 
-def check_filename_type(filename):
+def ensure_filename_is_str(filename):
     # Algorithms (itk) do not support Path -> convert to str
     if isinstance(filename, Path):
         return str(filename)
@@ -144,21 +151,24 @@ def check_filename_type(filename):
 
 def insert_suffix_before_extension(file_path, suffix, suffixSeparator="-"):
     print(file_path)
+
+    print(suffix)
     if suffix:
         suffix = suffix.strip("_- *")
-        suffix = suffix.capitalize()
+        suffix = suffix.lower()
+    else:
+        return file_path
+
     if not isinstance(file_path, Path):
         path = Path(file_path)
     else:
         path = file_path
-    # print(f'{path.stem = }')
-    # print(f'{path.suffix = }')
 
-    # new_file_name = path.stem + suffixSeparator + suffix + path.suffix
-    new_file_name = str(
-        path.with_name(path.stem + suffixSeparator + suffix + path.suffix)
-    )
-    # print(new_file_name)
+
+    new_file_name = path.with_name(path.stem + suffixSeparator + suffix + path.suffix)
+    print(new_file_name)
+
+
     return new_file_name
 
 
@@ -264,3 +274,26 @@ def print_opengate_info():
 
     except:
         print(f"GATE date        {get_release_date(version('opengate'))} (pypi)")
+
+
+def standard_error_c4_correction(n):
+    """
+    Parameters
+    ----------
+    n : integer
+        Number of subsets (of the samples).
+
+    Returns
+    -------
+    c4 : double
+        Factor to convert the biased standard error of the mean of subsets of the sample into an unbiased
+        -  assuming a normal distribution .
+        Usage: standard_error(unbiased) = standard_deviation_of_mean(=biased) / c4
+        The reason is that the standard deviation of the mean of subsets of the sample X underestimates the true standard error. For n = 2 this underestimation is about 25%.
+
+        Values for c4: n=2: 0.7979; n= 9: 0.9693
+
+    """
+    return (
+        np.sqrt(2 / (n - 1)) * sc.special.gamma(n / 2) / sc.special.gamma((n - 1) / 2)
+    )

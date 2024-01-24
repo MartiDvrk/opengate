@@ -16,14 +16,13 @@ if __name__ == "__main__":
     sim = gate.Simulation()
 
     # main options
-    ui = sim.user_info
-    ui.g4_verbose = False
-    ui.g4_verbose_level = 1
-    ui.visu = False
-    ui.random_seed = 12345678910
-    ui.number_of_threads = 2
+    sim.g4_verbose = False
+    sim.g4_verbose_level = 1
+    sim.visu = False
+    sim.random_seed = 12345678910
+    sim.number_of_threads = 2
 
-    numPartSimTest = 40000 / ui.number_of_threads
+    numPartSimTest = 40000 / sim.number_of_threads
     numPartSimRef = 1e5
 
     # units
@@ -56,13 +55,12 @@ if __name__ == "__main__":
     phantom_off.color = [0, 0, 1, 1]
 
     # physics
-    p = sim.get_physics_user_info()
-    p.physics_list_name = "QGSP_BIC_EMZ"
-    # sim.set_cut("world", "all", 1000 * km)
+    sim.physics_manager.physics_list_name = "QGSP_BIC_EMZ"
+    # sim.physics_manager.set_production_cut("world", "all", 1000 * km)
     # FIXME need SetMaxStepSizeInRegion ActivateStepLimiter
     # now avialable
     # e.g.
-    # sim.set_max_step_size(volume_name='phantom.name', max_step_size=1*mm)
+    # sim.physics_manager.set_max_step_size(volume_name='phantom.name', max_step_size=1*mm)
 
     # default source for tests
     source = sim.add_source("GenericSource", "mysource")

@@ -131,7 +131,8 @@ if __name__ == "__main__":
     block_size = [200 * m, 200 * m, 200 * m]
 
     # Tungsten block
-    sim.add_material_weights(
+
+    sim.volume_manager.material_database.add_material_weights(
         "Tungsten",
         ["W"],
         [1],
@@ -198,13 +199,15 @@ if __name__ == "__main__":
     dose.hit_type = "random"
 
     # Physic list and cuts
-    p = sim.get_physics_user_info()
+
     sim.physics_manager.physics_list_name = "G4EmStandardPhysics_option3"
     sim.physics_manager.enable_decay = False
     sim.physics_manager.global_production_cuts.gamma = 1 * km
     sim.physics_manager.global_production_cuts.electron = 1 * km
     sim.physics_manager.global_production_cuts.positron = 1 * km
-    output = sim.start()
+
+    sim.run()
+    output = sim.output
 
     # print results
     stats = output.get_actor("Stats")

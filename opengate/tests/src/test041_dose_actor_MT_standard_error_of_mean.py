@@ -23,10 +23,9 @@ def run_sim(n_thr, c4_ref=None, paths=None):
     N_per_trhead = Ntotal / ui.number_of_threads
     # units
     m = gate.g4_units.m
-    mm = gate.g4_units.mm
     cm = gate.g4_units.cm
+    mm = gate.g4_units.mm
     km = gate.g4_units.km
-    nm = gate.g4_units.nm
     MeV = gate.g4_units.MeV
     Bq = gate.g4_units.Bq
     kBq = 1000 * Bq
@@ -47,8 +46,7 @@ def run_sim(n_thr, c4_ref=None, paths=None):
     phantom.color = [0, 0, 1, 1]
 
     # physics
-    p = sim.get_physics_user_info()
-    p.physics_list_name = "QGSP_BIC_EMY"
+    sim.physics_manager.physics_list_name = "QGSP_BIC_EMY"
     # sim.set_cut("world", "all", 1000 * km)
     sim.physics_manager.global_production_cuts.all = 1000 * km
 
@@ -77,7 +75,7 @@ def run_sim(n_thr, c4_ref=None, paths=None):
     doseActor.spacing = dose_spacing
     doseActor.hit_type = "random"
     doseActor.dose = False
-    doseActor.use_more_RAM = False
+    doseActor.use_more_ram = False
     doseActor.ste_of_mean = False
     doseActor.uncertainty = True
     doseActor.square = False
@@ -92,7 +90,7 @@ def run_sim(n_thr, c4_ref=None, paths=None):
     doseActor.spacing = dose_spacing
     doseActor.hit_type = "random"
     doseActor.dose = False
-    doseActor.use_more_RAM = True
+    doseActor.use_more_ram = True
     doseActor.ste_of_mean = True
     doseActor.uncertainty = False
     doseActor.square = False
@@ -107,7 +105,7 @@ def run_sim(n_thr, c4_ref=None, paths=None):
     doseActor.spacing = dose_spacing
     doseActor.hit_type = "random"
     doseActor.dose = False
-    doseActor.use_more_RAM = True
+    doseActor.use_more_ram = True
     doseActor.ste_of_mean_unbiased = True
     doseActor.uncertainty = False
     doseActor.square = False
@@ -136,13 +134,15 @@ def run_sim(n_thr, c4_ref=None, paths=None):
     )
     doseFpath_IDD_NthreadImages_uncert = str(
         sim.output.get_actor(doseActorName_IDD_NthreadImages).user_info.output
-    ).replace(".mhd", "-Uncertainty.mhd")
+
+    ).replace("-Edep.mhd.mhd", "-Uncertainty.mhd")
     doseFpath_IDD_NthreadImages_uncert_unbiased = str(
         sim.output.get_actor(doseActorName_IDD_NthreadImages_unbiased).user_info.output
-    ).replace(".mhd", "-Uncertainty.mhd")
+    ).replace("-Edep.mhd.mhd", "-Uncertainty.mhd")
     doseFpath_IDD_singleImage_uncert = str(
         sim.output.get_actor(doseActorName_IDD_singleImage).user_info.output
-    ).replace(".mhd", "-Uncertainty.mhd")
+    ).replace("-Edep.mhd.mhd", "-Uncertainty.mhd")
+
 
     unused = utility.assert_images(
         doseFpath_IDD_singleImage,
@@ -210,7 +210,8 @@ if __name__ == "__main__":
         1000: 0.999749781,
     }
     for n_thr in n_thrV:
-        c4_calc = gate.actors.miscactors.standard_error_c4_correction(n_thr)
+
+        c4_calc = gate.utility.standard_error_c4_correction(n_thr)
         if n_thr in c4_referencesV:
             c4_ref = c4_referencesV[n_thr]
             print(f"{n_thr = }")

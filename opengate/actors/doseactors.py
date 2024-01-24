@@ -3,11 +3,16 @@ import numpy as np
 import opengate_core as g4
 from .base import ActorBase
 from ..exception import fatal, warning
-from ..utility import g4_units, check_filename_type, insert_suffix_before_extension
+
+from ..utility import (
+    g4_units,
+    ensure_filename_is_str,
+    standard_error_c4_correction,
+)
+
 from ..image import (
     create_3d_image,
-    get_physical_volume,
-    attach_image_to_physical_volume,
+    align_image_with_physical_volume,
     update_image_py_to_cpp,
     create_image_like,
     get_info_from_image,
@@ -16,8 +21,10 @@ from ..image import (
     itk_image_view_from_array,
     divide_itk_images,
     scale_itk_image,
+
+    write_itk_image,
 )
-from .miscactors import standard_error_c4_correction
+
 from ..geometry.materials import create_mass_img, create_density_img
 
 
@@ -63,7 +70,8 @@ class DoseActor(g4.GateDoseActor, ActorBase):
 
         user_info.dose = False
         user_info.to_water = False
-        user_info.use_more_RAM = False
+
+        user_info.use_more_ram = False
         user_info.ste_of_mean = False
         user_info.ste_of_mean_unbiased = False
 
@@ -77,7 +85,7 @@ class DoseActor(g4.GateDoseActor, ActorBase):
         ActorBase.__init__(self, user_info)
         if user_info.ste_of_mean_unbiased or user_info.ste_of_mean:
             self.user_info.ste_of_mean = True
-            self.user_info.use_more_RAM = True
+            self.user_info.use_more_ram = True
         g4.GateDoseActor.__init__(self, user_info.__dict__)
         # attached physical volume (at init)
         self.g4_phys_vol = None
@@ -124,10 +132,11 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             or self.user_info.goal_uncertainty > 1.0
         ):
             raise ValueError("goal uncertainty must be > 0 and < 1")
-            
+
+
         if self.user_info.ste_of_mean_unbiased:
             self.user_info.ste_of_mean = True
-            
+
         if self.user_info.ste_of_mean:
             self.user_info.use_more_RAM = True
 
@@ -138,18 +147,23 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             raise ValueError(
                 "number_of_threads should be > 4 when using dose actor with ste_of_mean flag enabled"
             )
-            
+
+
         if self.user_info.goal_uncertainty:
-            if self.user_info.uncertainty == False and self.user_info.ste_of_mean == False:
+            if (
+                self.user_info.uncertainty == False
+                and self.user_info.ste_of_mean == False
+            ):
                 raise ValueError(
-                    "To set un uncertainty goal, set at least one of this flags to True: uncertainty, ste_of_mean"
+                    "To set an uncertainty goal, set at least one of this flags to True: uncertainty, ste_of_mean"
+
                 )
 
         if self.user_info.uncertainty == True and self.user_info.ste_of_mean == True:
             raise ValueError(
                 "select only one way to calculate uncertainty: uncertainty or ste_of_mean"
             )
-            
+
         super().initialize(volume_engine)
         # create itk image (py side)
         size = np.array(self.user_info.size)
@@ -165,16 +179,25 @@ class DoseActor(g4.GateDoseActor, ActorBase):
     def StartSimulationAction(self):
         # init the origin and direction according to the physical volume
         # (will be updated in the BeginOfRun)
+        attached_to_volume = self.volume_engine.get_volume(self.user_info.mother)
+        if self.user_info.physical_volume_index is None:
+            physical_volume_index = 0
+        else:
+            physical_volume_index = self.user_info.physical_volume_index
         try:
-            self.g4_phys_vol = get_physical_volume(
-                self.volume_engine,
-                self.user_info.mother,
-                self.user_info.physical_volume_index,
+            self.g4_phys_vol = attached_to_volume.g4_physical_volumes[
+                physical_volume_index
+            ]
+        except IndexError:
+            fatal(
+                f"Error in the DoseActor {self.user_info.name}. "
+                f"Could not find the physical volume with index {physical_volume_index} "
+                f"in volume '{self.user_info.mother}' to which this actor is attached. "
             )
-        except:
-            fatal(f"Error in the DoseActor {self.user_info.name}")
-        attach_image_to_physical_volume(
-            self.g4_phys_vol.GetName(), self.py_edep_image, self.user_info.translation
+        align_image_with_physical_volume(
+            attached_to_volume,
+            self.py_edep_image,
+            initial_translation=self.user_info.translation,
         )
 
         # Set the real physical volume name
@@ -238,7 +261,6 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             self.output_origin = self.user_info.output_origin
 
     def EndSimulationAction(self):
-        # print(lol)
         g4.GateDoseActor.EndSimulationAction(self)
 
         # Get the itk image from the cpp side
@@ -250,39 +272,43 @@ class DoseActor(g4.GateDoseActor, ActorBase):
         # FIXME no direction for the moment ?
         self.py_edep_image.SetOrigin(self.output_origin)
 
+        self.user_info.output = self.simulation.get_output_path(self.user_info.output)
+
         # dose in gray
         if self.user_info.dose:
-            self.user_info.output = insert_suffix_before_extension(
-                self.user_info.output, "dose"
+            self.user_info.output = self.simulation.get_output_path(
+                self.user_info.output, suffix="dose"
             )
             if not self.user_info.dose_calc_on_the_fly:
-                self.user_info.output = insert_suffix_before_extension(
-                    self.user_info.output, "postprocessing"
+                self.user_info.output = self.simulation.get_output_path(
+                    self.user_info.output, suffix="postprocessing"
                 )
 
         else:
-            self.user_info.output = insert_suffix_before_extension(
-                self.user_info.output, "edep"
+            self.user_info.output = self.simulation.get_output_path(
+                self.user_info.output, suffix="edep"
             )
 
         if self.user_info.to_water:
-            self.user_info.output = insert_suffix_before_extension(
-                self.user_info.output, "ToWater"
+            self.user_info.output = self.simulation.get_output_path(
+                self.user_info.output, suffix="ToWater"
+
             )
 
         # Uncertainty stuff need to be called before writing edep (to terminate temp events)
         if self.user_info.uncertainty or self.user_info.ste_of_mean:
             self.create_uncertainty_img()
-            self.user_info.output_uncertainty = insert_suffix_before_extension(
-                self.user_info.output, "uncertainty"
+
+            self.user_info.output_uncertainty = self.simulation.get_output_path(
+                self.user_info.output, suffix="uncertainty"
             )
-            itk.imwrite(self.uncertainty_image, self.user_info.output_uncertainty)
+            write_itk_image(self.uncertainty_image, self.user_info.output_uncertainty)
 
         # Write square image too
         if self.user_info.square:
-            self.get_square_image()
-            n = insert_suffix_before_extension(self.user_info.output, "Squared")
-            itk.imwrite(self.py_square_image, n)
+            self.fetch_square_image_from_cpp()
+            n = self.simulation.get_output_path(self.user_info.output, suffix="Squared")
+            write_itk_image(self.py_square_image, n)
 
         if not self.user_info.dose_calc_on_the_fly and self.user_info.dose:
             self.compute_dose_from_edep_img()
@@ -290,32 +316,29 @@ class DoseActor(g4.GateDoseActor, ActorBase):
         # write the image at the end of the run
         # FIXME : maybe different for several runs
         if self.user_info.output:
-            itk.imwrite(self.py_edep_image, check_filename_type(self.user_info.output))
+            write_itk_image(self.py_edep_image, self.user_info.output)
 
-    def compute_dose_from_edep_img(self, overrides=dict()):
+    def compute_dose_from_edep_img(self):
         """
-        * cretae mass image:
+        * create mass image:
             - from ct HU units, if dose actor attached to ImageVolume.
             - from material density, if standard volume
         * compute dose as edep_image /  mass_image
         """
-        vol_name = self.user_info.mother
-        vol = self.simulation.volume_manager.get_volume(vol_name)
-        vol_type = vol.volume_type
+        vol = self.simulation.volume_manager.get_volume(self.user_info.mother)
         spacing = np.array(self.user_info.spacing)
         voxel_volume = spacing[0] * spacing[1] * spacing[2]
         Gy = g4_units.Gy
         gcm3 = g4_units.g_cm3
 
-        if vol_type == "ImageVolume":
+        if vol.volume_type == "ImageVolume":
             material_database = (
                 self.simulation.volume_manager.material_database.g4_materials
             )
             if self.user_info.to_water:
-                # for dose 2 water, divide by density of water and not density of material
-                density_water = 1.0 * gcm3
+                # for dose to water, divide by density of water and not density of material
                 self.py_edep_image = scale_itk_image(
-                    self.py_edep_image, 1 / density_water
+                    self.py_edep_image, 1 / (1.0 * gcm3)
                 )
             else:
                 density_img = create_density_img(vol, material_database)
@@ -340,7 +363,8 @@ class DoseActor(g4.GateDoseActor, ActorBase):
                 self.py_edep_image, 1 / (voxel_volume * density * Gy)
             )
 
-    def get_square_image(self):
+
+    def fetch_square_image_from_cpp(self):
         if self.py_square_image == None:
             self.py_square_image = get_cpp_image(self.cpp_square_image)
             self.py_square_image.SetOrigin(self.output_origin)
@@ -375,7 +399,8 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             """
             N = self.simulation.user_info.number_of_threads
 
-        self.get_square_image()
+
+        self.fetch_square_image_from_cpp()
 
         edep = itk.array_view_from_image(self.py_edep_image)
         square = itk.array_view_from_image(self.py_square_image)
@@ -396,10 +421,10 @@ class DoseActor(g4.GateDoseActor, ActorBase):
         self.uncertainty_image.CopyInformation(self.py_edep_image)
         self.uncertainty_image.SetOrigin(self.output_origin)
         # debug
-        """itk.imwrite(self.py_square_image, "square.mhd")
-        itk.imwrite(self.py_temp_image, "temp.mhd")
-        itk.imwrite(self.py_last_id_image, "lastid.mhd")
-        itk.imwrite(self.uncertainty_image, "uncer.mhd")"""
+        """write_itk_image(self.py_square_image, "square.mhd")
+        write_itk_image(self.py_temp_image, "temp.mhd")
+        write_itk_image(self.py_last_id_image, "lastid.mhd")
+        write_itk_image(self.uncertainty_image, "uncer.mhd")"""
 
 
 class LETActor(g4.GateLETActor, ActorBase):
@@ -517,18 +542,21 @@ class LETActor(g4.GateLETActor, ActorBase):
     def StartSimulationAction(self):
         # init the origin and direction according to the physical volume
         # (will be updated in the BeginOfRun)
+        attached_to_volume = self.volume_engine.get_volume(self.user_info.mother)
+        if self.user_info.physical_volume_index is None:
+            physical_volume_index = 0
+        else:
+            physical_volume_index = self.user_info.physical_volume_index
         try:
-            self.g4_phys_vol = get_physical_volume(
-                self.volume_engine,
-                self.user_info.mother,
-                self.user_info.physical_volume_index,
-            )
-        except:
+            self.g4_phys_vol = attached_to_volume.g4_physical_volumes[
+                physical_volume_index
+            ]
+        except:  # FIXME: need explicit exception
             fatal(f"Error in the LETActor {self.user_info.name}")
-        attach_image_to_physical_volume(
-            self.g4_phys_vol.GetName(),
+        align_image_with_physical_volume(
+            attached_to_volume,
             self.py_numerator_image,
-            self.user_info.translation,
+            initial_translation=self.user_info.translation,
         )
 
         # Set the real physical volume name
@@ -624,15 +652,129 @@ class LETActor(g4.GateLETActor, ActorBase):
                 filterVal=0,
                 replaceFilteredVal=0,
             )
-            itk.imwrite(self.py_LETd_image, check_filename_type(fPath))
+            write_itk_image(self.py_LETd_image, fPath)
 
-            # for parrallel computation we need to provide both outputs
+            # for parallel computation we need to provide both outputs
             if self.user_info.separate_output:
-                fPath = insert_suffix_before_extension(
-                    self.user_info.output, "numerator"
+
+                fPath = self.simulation.get_output_path(
+                    self.user_info.output, suffix="numerator"
                 )
-                itk.imwrite(self.py_numerator_image, check_filename_type(fPath))
-                fPath = insert_suffix_before_extension(
-                    self.user_info.output, "denominator"
+                write_itk_image(self.py_numerator_image, fPath)
+                fPath = self.simulation.get_output_path(
+                    self.user_info.output, suffix="denominator"
                 )
-                itk.imwrite(self.py_denominator_image, check_filename_type(fPath))
+                write_itk_image(self.py_denominator_image, fPath)
+
+
+class FluenceActor(g4.GateFluenceActor, ActorBase):
+    """
+    FluenceActor: compute a 3D map of fluence
+
+    FIXME: add scatter order and uncertainty
+    """
+
+    type_name = "FluenceActor"
+
+    def set_default_user_info(user_info):
+        ActorBase.set_default_user_info(user_info)
+        # required user info, default values
+        mm = g4_units.mm
+        user_info.size = [10, 10, 10]
+        user_info.spacing = [1 * mm, 1 * mm, 1 * mm]
+        user_info.output = "fluence.mhd"
+        user_info.translation = [0, 0, 0]
+        user_info.physical_volume_index = None
+        user_info.uncertainty = False
+        user_info.scatter = False
+
+    def __init__(self, user_info):
+        ActorBase.__init__(self, user_info)
+        g4.GateFluenceActor.__init__(self, user_info.__dict__)
+        # attached physical volume (at init)
+        self.g4_phys_vol = None
+        # default image (py side)
+        self.py_fluence_image = None
+
+    def __str__(self):
+        u = self.user_info
+        s = f'FluenceActor "{u.name}": dim={u.size} spacing={u.spacing} {u.output} tr={u.translation}'
+        return s
+
+    def __getstate__(self):
+        # superclass getstate
+        DoseActor.__getstate__(self)
+        return self.__dict__
+
+    def initialize(self, volume_engine=None):
+        super().initialize(volume_engine)
+        # create itk image (py side)
+        size = np.array(self.user_info.size)
+        spacing = np.array(self.user_info.spacing)
+        self.py_fluence_image = create_3d_image(size, spacing)
+        # compute the center, using translation and half pixel spacing
+        self.img_origin_during_run = (
+            -size * spacing / 2.0 + spacing / 2.0 + self.user_info.translation
+        )
+        # for initialization during the first run
+        self.first_run = True
+        # no options yet
+        if self.user_info.uncertainty or self.user_info.scatter:
+            fatal(f"FluenceActor : uncertainty and scatter not implemented yet")
+
+    def StartSimulationAction(self):
+        # init the origin and direction according to the physical volume
+        # (will be updated in the BeginOfRun)
+        attached_to_volume = self.volume_engine.get_volume(self.user_info.mother)
+        if self.user_info.physical_volume_index is None:
+            physical_volume_index = 0
+        else:
+            physical_volume_index = self.user_info.physical_volume_index
+        try:
+            self.g4_phys_vol = attached_to_volume.g4_physical_volumes[
+                physical_volume_index
+            ]
+        except IndexError:
+            fatal(
+                f"Error in the FluenceActor {self.user_info.name}. "
+                f"Could not find the physical volume with index {physical_volume_index} "
+                f"in volume '{self.user_info.mother}' to which this actor is attached. "
+            )
+        align_image_with_physical_volume(
+            attached_to_volume,
+            self.py_fluence_image,
+            initial_translation=self.user_info.translation,
+        )
+
+        # Set the real physical volume name
+        self.fPhysicalVolumeName = str(self.g4_phys_vol.GetName())
+
+        # FIXME for multiple run and motion
+        if not self.first_run:
+            warning(f"Not implemented yet: FluenceActor with several runs")
+        # send itk image to cpp side, copy data only the first run.
+        update_image_py_to_cpp(
+            self.py_fluence_image, self.cpp_fluence_image, self.first_run
+        )
+
+        # now, indicate the next run will not be the first
+        self.first_run = False
+
+    def EndSimulationAction(self):
+        g4.GateFluenceActor.EndSimulationAction(self)
+
+        # Get the itk image from the cpp side
+        # Currently a copy. Maybe later as_pyarray ?
+        self.py_fluence_image = get_cpp_image(self.cpp_fluence_image)
+
+        # set the property of the output image:
+        origin = self.img_origin_during_run
+        self.py_fluence_image.SetOrigin(origin)
+
+        # write the image at the end of the run
+        # FIXME : maybe different for several runs
+        if self.user_info.output:
+            out_p = ensure_filename_is_str(
+                self.simulation.get_output_path(self.user_info.output)
+            )
+            itk.imwrite(self.py_fluence_image, out_p)

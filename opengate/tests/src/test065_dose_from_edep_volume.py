@@ -3,7 +3,7 @@ import itk
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
+
 from scipy.spatial.transform import Rotation
 from opengate.tests import utility
 from opengate.contrib.beamlines.ionbeamline import BeamlineModel
@@ -37,7 +37,9 @@ if __name__ == "__main__":
     gcm3 = gate.g4_units.g_cm3
 
     # add a material database
-    sim.add_material_database(paths.gate_data / "HFMaterials2014.db")
+
+    sim.volume_manager.add_material_database(paths.gate_data / "HFMaterials2014.db")
+
 
     ## Beamline model
     IR2HBL = BeamlineModel()
@@ -98,11 +100,11 @@ if __name__ == "__main__":
     #     [-1024, -300, "G4_AIR"],
     #     [-300, 3000, "G4_WATER"],
     # ]
-    sim.set_max_step_size(target.name, 0.8)
+
+    sim.physics_manager.set_max_step_size(target.name, 0.8)
 
     # physics
-    p = sim.get_physics_user_info()
-    p.physics_list_name = "FTFP_INCLXX_EMZ"  #'QGSP_BIC_HP_EMZ' #"FTFP_INCLXX_EMZ"
+    sim.physics_manager.physics_list_name = "FTFP_INCLXX_EMZ"
     sim.physics_manager.set_production_cut("world", "all", 1000 * km)
 
     # add dose actor
@@ -142,7 +144,10 @@ if __name__ == "__main__":
         s = sim.add_actor("SimulationStatisticsActor", "Stats")
         s.track_types_flag = True
         # start simulation
-        output = sim.start()
+
+        sim.run()
+        output = sim.output
+
 
         # print results at the end
         stat = output.get_actor("Stats")

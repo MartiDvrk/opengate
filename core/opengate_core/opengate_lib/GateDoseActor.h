@@ -95,6 +95,7 @@ public:
   int NbOfEvent = 0;
   int NbOfThreads = 0;
   int N_voxels = 0;
+
   double goalUncertainty;
   double threshEdepPerc;
   // struct timeval mTimeOfLastSaveEvent;

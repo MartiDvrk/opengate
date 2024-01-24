@@ -22,12 +22,11 @@ if __name__ == "__main__":
     sim = gate.Simulation()
 
     # main options
-    ui = sim.user_info
-    ui.g4_verbose = False
-    ui.g4_verbose_level = 1
-    ui.visu = False
-    ui.random_seed = 12365478910
-    ui.random_engine = "MersenneTwister"
+    sim.g4_verbose = False
+    sim.g4_verbose_level = 1
+    sim.visu = False
+    sim.random_seed = 12365478910
+    sim.random_engine = "MersenneTwister"
 
     # units
     km = gate.g4_units.km
@@ -41,7 +40,7 @@ if __name__ == "__main__":
     rad = gate.g4_units.rad
 
     # add a material database
-    sim.add_material_database(paths.gate_data / "HFMaterials2014.db")
+    sim.volume_manager.add_material_database(paths.gate_data / "HFMaterials2014.db")
 
     #  change world size
     world = sim.world
@@ -68,13 +67,11 @@ if __name__ == "__main__":
     # phantom.rotation = Rotation.from_euler('x',-90,degrees=True).as_matrix()
     phantom.material = "G4_AIR"
     phantom.color = [0, 0, 1, 1]
-    sim.set_max_step_size(phantom.name, 0.8)
+    sim.physics_manager.set_max_step_size(phantom.name, 0.8)
 
     # physics
-    p = sim.get_physics_user_info()
-    p.physics_list_name = "FTFP_INCLXX_EMZ"  # "Shielding_EMZ"#"FTFP_INCLXX_EMZ"
 
-    # p.physics_list_name = "QGSP_BIC_EMZ"
+    sim.physics_manager.physics_list_name = "FTFP_INCLXX_EMZ"
     sim.physics_manager.set_production_cut("world", "all", 1000 * km)
 
     # add dose actor
@@ -142,14 +139,11 @@ if __name__ == "__main__":
     print(stat)
 
     ## ------ TESTS -------##
-    dose_path = utility.scale_dose(
-        str(dose.output).replace(".mhd", "_dose.mhd"),
-        ntot / actual_sim_particles,
-    )
+
 
     # SPOT POSITIONS COMPARISON
     # read output and ref
-    img_mhd_out = itk.imread(dose_path)
+    img_mhd_out = itk.imread(dose.output)
     img_mhd_ref = itk.imread(
         ref_path / "idc-PHANTOM-air_box-gate_test59_TP_1-PLAN-Physical.mhd"
     )

@@ -23,10 +23,9 @@ if __name__ == "__main__":
     ui.number_of_threads = 5
     # units
     m = gate.g4_units.m
-    mm = gate.g4_units.mm
     cm = gate.g4_units.cm
+    mm = gate.g4_units.mm
     km = gate.g4_units.km
-    nm = gate.g4_units.nm
     MeV = gate.g4_units.MeV
     Bq = gate.g4_units.Bq
     kBq = 1000 * Bq
@@ -70,8 +69,7 @@ if __name__ == "__main__":
     entranceRegion.color = [0, 0, 1, 1]
 
     # physics
-    p = sim.get_physics_user_info()
-    p.physics_list_name = "QGSP_BIC_EMY"
+    sim.physics_manager.physics_list_name = "QGSP_BIC_EMY"
     sim.physics_manager.global_production_cuts.all = 1000 * km
     # sim.set_cut("world", "all", 1000 * km)
 
@@ -110,8 +108,9 @@ if __name__ == "__main__":
     doseActorDerived.size = doseActor.size
     doseActorDerived.spacing = doseActor.spacing
     doseActorDerived.hit_type = "random"
-    doseActorDerived.to_water = True
+
     doseActorDerived.dose = True
+    doseActorDerived.to_water = True
 
     doseActorName_water_slab_insert_d = "IDD_waterSlab_d"
     doseActorDerived = sim.add_actor("DoseActor", doseActorName_water_slab_insert_d)
@@ -133,8 +132,9 @@ if __name__ == "__main__":
     doseActorDerived.size = doseActor.size
     doseActorDerived.spacing = doseActor.spacing
     doseActorDerived.hit_type = "random"
-    doseActorDerived.to_water = True
+
     doseActorDerived.dose = True
+    doseActorDerived.to_water = True
 
     doseActorName_entranceRegiont_d = "IDD_entranceRegion_d"
     doseActorDerived = sim.add_actor("DoseActor", doseActorName_entranceRegiont_d)
@@ -156,8 +156,9 @@ if __name__ == "__main__":
     doseActorDerived.size = doseActor.size
     doseActorDerived.spacing = doseActor.spacing
     doseActorDerived.hit_type = "random"
-    doseActorDerived.to_water = True
+
     doseActorDerived.dose = True
+    doseActorDerived.to_water = True
 
     # add stat actor
     s = sim.add_actor("SimulationStatisticsActor", "stats")

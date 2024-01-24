@@ -42,6 +42,7 @@ def sequence_check(obj, attr, nmin=1, nmax=0, name="object"):
 
 def spots_info_from_txt(txtFile, ionType, beam_nr):
     # initialize empty variables
+
     beam_data = dict()
     beam_data['n_fields'] = 0
     beam_data['plan_name'] = ''
@@ -54,6 +55,7 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
     beam_data['isocenter'] = []
     found_field = False
     start_index = []
+
 
     # read  content
     with open(txtFile, "r") as f:
@@ -69,6 +71,7 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
             l = lines[i + 1].split("\n")[0]
             beam_data['n_fields'] = int(l)
             if beam_nr > beam_data['n_fields']:
+
                 raise ValueError(
                     "requested beam number higher than number of beams in the beamset"
                 )
@@ -113,6 +116,7 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
             beam_data['spots'].append(spot)
 
     return beam_data
+
 
 
 def check_plan_tag(txt_line, tag):
@@ -755,9 +759,6 @@ class TreatmentPlanSource:
         self.n_sim = 0
         self.sim = sim  # simulation obj to which we want to add the tp source
 
-    def __del__(self):
-        pass
-
     def set_particles_to_simulate(self, n_sim):
         self.n_sim = n_sim
 
@@ -794,17 +795,17 @@ class TreatmentPlanSource:
         self.proportion_factor_x = cal_proportion_factor(self.d_stearMag_to_iso_x)
         self.proportion_factor_y = cal_proportion_factor(self.d_stearMag_to_iso_y)
         tot_sim_particles = 0
+
+        n_part_spots_V = self._sample_n_particles_spots(flat_generation=flat_generation)
+
         # initialize a pencil beam for each spot
         for i, spot in enumerate(spots_array):
-            if flat_generation:
-                # simualte same number of particles for each spot
-                nspot = nSim / len(spots_array)
-            else:
-                # simulate a fraction of the beam particles for this spot
-                nspot = np.round(spot.beamFraction * nSim)
+
+            nspot = n_part_spots_V[i]
+
             if nspot == 0:
                 continue
-            tot_sim_particles += nspot
+
             source = sim.add_source("IonPencilBeamSource", f"{self.name}_spot_{i}")
 
             # set energy
@@ -834,9 +835,13 @@ class TreatmentPlanSource:
 
             # set number of particles
             if activity:
-                source.activity = nspot*Bq
+                source.activity = nspot * Bq
             else:
+                # nspot = np.round(nspot)
                 source.n = nspot
+
+            tot_sim_particles += nspot
+
 
             # set optics parameters
             source.direction.partPhSp_x = [
@@ -853,6 +858,20 @@ class TreatmentPlanSource:
             ]
 
         self.actual_sim_particles = tot_sim_particles
+
+    def _sample_n_particles_spots(self, flat_generation=False):
+        if flat_generation:
+            pdf = [1 / len(self.spots) for spot in self.spots]
+        else:
+            pdf = [spot.beamFraction for spot in self.spots]
+
+        n_spots = len(self.spots)
+        n_part_spots_V = np.zeros(n_spots)
+        for i in range(int(self.n_sim)):
+            bin = np.random.choice(np.arange(0, n_spots), p=pdf)
+            n_part_spots_V[bin] += 1
+
+        return n_part_spots_V
 
     def _get_pbs_position(self, spot):
         # (x,y) referr to isocenter plane.

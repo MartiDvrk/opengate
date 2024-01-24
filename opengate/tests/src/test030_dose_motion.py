@@ -14,10 +14,9 @@ if __name__ == "__main__":
     sim = gate.Simulation()
 
     # main options
-    ui = sim.user_info
-    ui.g4_verbose = False
-    ui.visu = False
-    ui.random_seed = 983456
+    sim.g4_verbose = False
+    sim.visu = False
+    sim.random_seed = 983456
 
     # units
     m = gate.g4_units.m
@@ -30,8 +29,7 @@ if __name__ == "__main__":
     sec = gate.g4_units.second
 
     #  change world size
-    world = sim.world
-    world.size = [1 * m, 1 * m, 1 * m]
+    sim.world.size = [1 * m, 1 * m, 1 * m]
 
     # add a simple fake volume to test hierarchy
     # translation and rotation like in the Gate macro
@@ -51,7 +49,7 @@ if __name__ == "__main__":
     waterbox.color = [0, 0, 1, 1]
 
     # physics
-    sim.set_production_cut("world", "all", 700 * um)
+    sim.physics_manager.set_production_cut("world", "all", 700 * um)
 
     # default source for tests
     # the source is fixed at the center, only the volume will move
@@ -66,7 +64,7 @@ if __name__ == "__main__":
 
     # add dose actor
     dose = sim.add_actor("DoseActor", "dose")
-    dose.output = paths.output / "test030-edep.mhd"
+    dose.output = paths.output / "test030.mhd"
     dose.mother = "waterbox"
     dose.size = [99, 99, 99]
     mm = gate.g4_units.mm
@@ -101,7 +99,7 @@ if __name__ == "__main__":
         end += 1 * sec / n
 
     # start simulation
-    output = sim.run()
+    sim.run()
 
     # print results at the end
     stat = sim.output.get_actor("Stats")
@@ -115,11 +113,12 @@ if __name__ == "__main__":
     is_ok = utility.assert_stats(stat, stats_ref, 0.11)
 
     print()
+
     gate.exception.warning("Difference for EDEP")
     is_ok = (
         utility.assert_images(
             paths.output_ref / "test030-edep.mhd",
-            paths.output / "test030-edep.mhd",
+            dose.user_info.output,
             stat,
             tolerance=30,
             ignore_value=0,
@@ -131,7 +130,7 @@ if __name__ == "__main__":
     is_ok = (
         utility.assert_images(
             paths.output_ref / "test030-edep_uncertainty.mhd",
-            paths.output / "test030-edep_uncertainty.mhd",
+            dose.user_info.output_uncertainty,
             stat,
             tolerance=15,
             ignore_value=1,

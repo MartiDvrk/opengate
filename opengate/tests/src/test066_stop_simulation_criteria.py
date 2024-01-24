@@ -107,7 +107,9 @@ if __name__ == "__main__":
     waterbox.color = [0, 0, 1, 1]
 
     # physics
-    sim.set_production_cut("world", "all", 700 * um)
+
+    sim.physics_manager.set_production_cut("world", "all", 700 * um)
+
 
     # default source for tests
     # the source is fixed at the center, only the volume will move
@@ -129,6 +131,7 @@ if __name__ == "__main__":
     dose.spacing = [2.5 * mm, 2.5 * mm, 2.5 * mm]
     dose.uncertainty = False
     dose.ste_of_mean = True
+
     dose.goal_uncertainty = unc_goal
     dose.thresh_voxel_edep_for_unc_calc = thresh_voxel_edep_for_unc_calc
 
@@ -141,13 +144,16 @@ if __name__ == "__main__":
     sim.run_timing_intervals = run_timing_intervals
 
     # start simulation
-    output = sim.run()
+
+    sim.run()
+    output = sim.output
 
     # print results at the end
-    stat = sim.output.get_actor("Stats")
+    stat = output.get_actor("Stats")
     print(stat)
 
-    dose = sim.output.get_actor("dose")
+    dose = output.get_actor("dose")
+
     print(dose)
 
     # test that final mean uncertainty satisfies the goal uncertainty
@@ -168,7 +174,9 @@ if __name__ == "__main__":
 
     # test that the simulation didn't stop because we reached the planned number of runs
     stats_ref = utility.read_stat_file(paths.output / "stats066.txt")
-    n_runs_planned = len(run_timing_intervals)
+
+    n_runs_planned = len(run_timing_intervals) * n_threads
+
     n_effective_runs = stats_ref.counts.run_count
     print(f"{n_runs_planned = }")
     print(f"{n_effective_runs = }")
