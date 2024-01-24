@@ -338,3 +338,45 @@ def volume_orbiting_transform(axis, start, end, n, initial_t, initial_rot):
         rotations.append(r)
         angle += step_angle
     return translations, rotations
+
+def repeat_array(name, size, translation):
+    start = [-(x - 1) * y / 2.0 for x, y in zip(size, translation)]
+    return repeat_array_start(name, start, size, translation)
+
+def repeat_array_start(name, start, size, translation):
+    le = [
+        {
+            "name": f"{name}_{x}_{y}_{z}",
+            "rotation": Rotation.identity().as_matrix(),
+            "translation": [
+                start[0] + translation[0] * x,
+                start[1] + translation[1] * y,
+                start[2] + translation[2] * z,
+            ],
+        }
+        for x, y, z in np.ndindex(size[0], size[1], size[2])
+    ]
+    return le
+
+def repeat_ring(name, start_deg, nb, translation, axis=[0, 0, 1]):
+    """
+    Build a repeater for the given volume name, according to a ring rotation.
+        start_deg *must* be in degrees
+        nb is the number of repeated positions
+        translation is the initial translation of the volume according to the center
+        axis is the rotation axis
+    The output is a dict (Box) of all positions (name + translation + rotation) than can be set
+    to the 'repeat' member of a volume.
+    """
+    le = []
+    step = np.pi * 2 / nb
+    angle = np.deg2rad(start_deg)
+    for i in range(nb):
+        e = Box()
+        e.name = f"{name}_{i}"
+        r = Rotation.from_rotvec(angle * np.array(axis))
+        e.rotation = r.as_matrix()
+        e.translation = r.apply(translation)
+        le.append(e)
+        angle += step
+    return le
