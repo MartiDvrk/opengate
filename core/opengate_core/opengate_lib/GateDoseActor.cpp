@@ -126,7 +126,7 @@ void GateDoseActor::BeginOfRunActionMasterThread(int run_id) {
     cpp_edep_image->Allocate();
     cpp_edep_image->FillBuffer(0.0);
   }
-  if (fSquareFlag || fSTEofMeanFlag) {
+  if (fSTEofMeanFlag != 0) {
     cpp_square_image->SetRegions(size_edep);
     cpp_square_image->Allocate();
     cpp_square_image->FillBuffer(0.0);
@@ -137,8 +137,7 @@ void GateDoseActor::BeginOfRunAction(const G4Run *run) {
 
 
   auto &l = fThreadLocalData.Get();
-
-  if (fSquareFlag && run->GetRunID() < 1) {
+  if (fSquareFlag) {
     l.edepSquared_worker_flatimg.resize(N_voxels);
     std::fill(l.edepSquared_worker_flatimg.begin(),
               l.edepSquared_worker_flatimg.end(), 0.0);

@@ -9,6 +9,7 @@ import scipy
 import pathlib
 import uproot
 import sys
+from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
 import gatetools.phsp as phsp
@@ -77,6 +78,7 @@ def read_stat_file(filename):
 
 
 def print_test(b, s):
+    s += f" --> OK? {b}"
     if b:
         print(s)
     else:
@@ -115,7 +117,7 @@ def assert_stats(stat1, stat2, tolerance=0, is_ok=True):
 
     b = stat1.counts.run_count == stat2.counts.run_count
     is_ok = b and is_ok
-    print_test(b, f"Runs:         {stat1.counts.run_count} {stat2.counts.run_count} ")
+    print_test(b, f"Runs:         {stat1.counts.run_count} {stat2.counts.run_count}")
 
     b = abs(event_d) <= tolerance * 100
     is_ok = b and is_ok
@@ -878,31 +880,22 @@ def dict_compare(d1, d2):
 
 
 # Edit by Andreas and Martina
-def write_gauss_param_to_file(
-    outputdir, planePositionsV, saveFig=False, fNamePrefix="plane", fNameSuffix="a.mhd"
-):
-    # create output dir, if it doesn't exist
-    if not os.path.isdir(outputdir):
-        os.mkdir(outputdir)
-
-    print("fNameSuffix", fNameSuffix)
-    print("write mu and sigma file to dir: ")
-    print(outputdir)
+def write_gauss_param_to_file(output_file_pathV, planePositionsV, saveFig=False):
 
     # Extract gauss param along the two dim of each plane
     sigma_values = []
     mu_values = []
-    for i in planePositionsV:
-        filename = fNamePrefix + str(i) + fNameSuffix
-        filepath = outputdir / filename
+    for fp, i in zip(output_file_pathV, planePositionsV):
+        filepath = Path(fp)
+        outputdir = filepath.parent
 
         # Get data from file
-        data, spacing, shape = read_mhd(filepath)
+        data, spacing, shape = read_mhd(fp)
 
         # Figure output is saved only if fig names are provided
         fig_name = None
         if saveFig:
-            fig_name = str(outputdir) + "/Plane_" + str(i) + fNameSuffix + "_profile"
+            fig_name = str(filepath) + "_profile"
 
         # Get relevant gauss param
         sigma_x, mu_x, sigma_y, mu_y = get_gauss_param_xy(
@@ -1468,9 +1461,15 @@ def assert_images_ratio(
     return is_ok
 
 
-def assert_images_ratio_per_voxel(expected_ratio, mhd_1, mhd_2, abs_tolerance=0.1):
-    img1 = itk.imread(str(mhd_1))
-    img2 = itk.imread(str(mhd_2))
+def assert_images_ratio_per_voxel(
+    expected_ratio, mhd_1, mhd_2, abs_tolerance=0.1, mhd_is_path=True
+):
+    if mhd_is_path:
+        img1 = itk.imread(str(mhd_1))
+        img2 = itk.imread(str(mhd_2))
+    else:
+        img1 = mhd_1
+        img2 = mhd_2
     data1 = itk.GetArrayViewFromImage(img1).ravel()
     data2 = itk.GetArrayViewFromImage(img2).ravel()
 
