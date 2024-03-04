@@ -168,7 +168,7 @@ class DoseActor(g4.GateDoseActor, ActorBase):
         # create itk image (py side)
         size = np.array(self.user_info.size)
         spacing = np.array(self.user_info.spacing)
-        self.py_edep_image = create_3d_image(size, spacing)
+        self.py_edep_image = create_3d_image(size, spacing, "double")
         # compute the center, using translation and half pixel spacing
         self.img_origin_during_run = (
             -size * spacing / 2.0 + spacing / 2.0 + self.user_info.translation
@@ -215,7 +215,7 @@ class DoseActor(g4.GateDoseActor, ActorBase):
             or self.user_info.square
             or self.user_info.ste_of_mean
         ):
-            self.py_square_image = create_image_like(self.py_edep_image)
+            self.py_square_image = create_image_like(self.py_edep_image, pixel_type="double")
             update_image_py_to_cpp(
                 self.py_square_image, self.cpp_square_image, self.first_run
             )
@@ -411,7 +411,7 @@ class DoseActor(g4.GateDoseActor, ActorBase):
         del self.py_edep_image_tmp
 
         # uncertainty image
-        self.uncertainty_image = create_image_like(self.py_edep_image)
+        self.uncertainty_image = create_image_like(self.py_edep_image, pixel_type="double")
         # unc = itk.array_view_from_image(self.uncertainty_image)
 
         unc = self.compute_std_from_sample(
@@ -578,7 +578,7 @@ class LETActor(g4.GateLETActor, ActorBase):
             self.py_denominator_image, self.cpp_denominator_image, self.first_run
         )
 
-        self.py_output_image = create_image_like(self.py_numerator_image)
+        self.py_output_image = create_image_like(self.py_numerator_image, pixel_type="double")
 
         # now, indicate the next run will not be the first
         self.first_run = False
