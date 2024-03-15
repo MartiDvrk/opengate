@@ -44,6 +44,7 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
     # initialize empty variables
 
     beam_data = dict()
+
     beam_data['n_fields'] = 0
     beam_data['plan_name'] = ''
     beam_data['msw_beam'] = 0
@@ -71,7 +72,6 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
             l = lines[i + 1].split("\n")[0]
             beam_data['n_fields'] = int(l)
             if beam_nr > beam_data['n_fields']:
-
                 raise ValueError(
                     "requested beam number higher than number of beams in the beamset"
                 )
@@ -118,7 +118,6 @@ def spots_info_from_txt(txtFile, ionType, beam_nr):
     return beam_data
 
 
-
 def check_plan_tag(txt_line, tag):
     txt_line = txt_line.strip().lower()
     tag = tag.strip().lower()
@@ -145,7 +144,7 @@ def get_spots_from_beamset(beamset):
 def get_spots_from_beamset_beam(beamset, beam_nr):
     rad_type = beamset.bs_info["Radiation Type Opengate"]
     spots_array = []
-    beam = beamset.beams[beam_nr]
+    beam = beamset.beams[beam_nr - 1]
     mswtot = beam.mswtot
     for energy_layer in beam.layers:
         for spot in energy_layer.spots:
@@ -767,9 +766,9 @@ class TreatmentPlanSource:
     def set_spots(self, spots):
         self.spots = spots
 
-    def set_spots_from_rtplan(self, rt_plan_path, beam_nr=0):
+    def set_spots_from_rtplan(self, rt_plan_path, beam_nr=1):
         beamset = BeamsetInfo(rt_plan_path)
-        gantry_angle = beamset.beam_angles[beam_nr]
+        gantry_angle = beamset.beam_angles[beam_nr - 1]
         spots = get_spots_from_beamset_beam(beamset, beam_nr)
         self.spots = spots
         self.rotation = Rotation.from_euler("z", gantry_angle, degrees=True)
