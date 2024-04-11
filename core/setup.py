@@ -95,7 +95,7 @@ class CMakeBuild(build_ext):
         else:
             cmake_args += ['-DCMAKE_CXX_FLAGS="-Wno-pedantic"']
             cmake_args += ["-DCMAKE_BUILD_TYPE=" + cfg]
-            build_args += ["--", "-j4"]
+            build_args += ["--", "-j1"]
 
         env = os.environ.copy()
 
