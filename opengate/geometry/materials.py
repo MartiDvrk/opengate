@@ -9,6 +9,52 @@ from ..utility import fatal, g4_units, g4_best_unit
 from ..definitions import elements_name_symbol
 
 
+# def read_voxel_materials(filename, def_mat="G4_AIR"):
+#     p = os.path.abspath(filename)
+#     f = open(p, "r")
+#     current = 0
+#     materials = []
+#     for line in f:
+#         for word in line.split():
+#             if word[0] == "#":
+#                 break
+#             if current == 0:
+#                 start = float(word)
+#                 current = 1
+#             else:
+#                 if current == 1:
+#                     stop = float(word)
+#                     current = 2
+#                 else:
+#                     if current == 2:
+#                         mat = word
+#                         current = 0
+#                         materials.append([start, stop, mat])
+
+#     # sort according to starting interval
+#     materials = sorted(materials)
+
+#     # consider all values
+#     pix_mat = []
+#     previous = None
+#     for m in materials:
+#         if previous and previous > m[0]:
+#             fatal(
+#                 f"Error while reading {filename}\n"
+#                 f"Intervals are not disjoint: {previous} {m}"
+#             )
+#         if m[0] > m[1]:
+#             fatal(f"Error while reading {filename}\n" f"Wrong interval {m}")
+#         if not previous or previous == m[0]:
+#             pix_mat.append([previous, m[1], m[2]])
+#             previous = m[1]
+#         else:
+#             pix_mat.append([previous, m[0], def_mat])
+#             pix_mat.append([previous, m[1], m[2]])
+#             previous = m[1]
+
+#     return pix_mat
+
 def read_voxel_materials(filename, def_mat="G4_AIR"):
     p = os.path.abspath(filename)
     f = open(p, "r")
@@ -46,7 +92,7 @@ def read_voxel_materials(filename, def_mat="G4_AIR"):
         if m[0] > m[1]:
             fatal(f"Error while reading {filename}\n" f"Wrong interval {m}")
         if not previous or previous == m[0]:
-            pix_mat.append([previous, m[1], m[2]])
+            pix_mat.append([m[0], m[1], m[2]])
             previous = m[1]
         else:
             pix_mat.append([previous, m[0], def_mat])
@@ -54,7 +100,6 @@ def read_voxel_materials(filename, def_mat="G4_AIR"):
             previous = m[1]
 
     return pix_mat
-
 
 def HU_read_materials_table(file_mat):
     p = os.path.abspath(file_mat)
