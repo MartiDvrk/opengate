@@ -53,7 +53,7 @@ public:
   // virtual void EndSimulationAction();
 
   // Image type is 3D float by default
-  typedef itk::Image<float, 3> Image3DType;
+  typedef itk::Image<double, 3> Image3DType;
 
   int sub2ind(Image3DType::IndexType index3D);
   void ind2sub(int index, Image3DType::IndexType &index3D);
