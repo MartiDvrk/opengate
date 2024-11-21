@@ -33,9 +33,9 @@ GateLETActor::GateLETActor(py::dict &user_info) : GateWeightedEdepActor(user_inf
 
 }
 
-void GateLETActor::InitializeUserInput(py::dict &user_info) {
+void GateLETActor::InitializeUserInfo(py::dict &user_info) {
   // IMPORTANT: call the base class method
-  GateWeightedEdepActor::InitializeUserInput(user_info);
+  GateWeightedEdepActor::InitializeUserInfo(user_info);
 
   fAveragingMethod = DictGetStr(user_info, "averaging_method");
   

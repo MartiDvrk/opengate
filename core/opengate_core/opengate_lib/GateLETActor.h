@@ -25,10 +25,9 @@ public:
   // Constructor
   GateLETActor(py::dict &user_info);
 
-
-  virtual void InitializeUserInput(py::dict &user_info) override;
+  void InitializeUserInfo(py::dict &user_info) override;
   
-  virtual void AddValuesToImages(G4Step *step,itk::Image<double, 3>::IndexType index) override;
+  void AddValuesToImages(G4Step *step,itk::Image<double, 3>::IndexType index) override;
 
   std::string fAveragingMethod;
 
