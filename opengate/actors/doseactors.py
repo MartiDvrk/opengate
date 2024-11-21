@@ -1163,7 +1163,7 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
         self.s_max = alpha_ref + 2*beta_ref*self.D_cut
         self.lookup_table = self.store_lookup_table(self.lookup_table_path)
         
-        self.InitializeUserInput(self.user_info)
+        self.InitializeUserInfo(self.user_info)
         # Set the physical volume name on the C++ side
         self.SetPhysicalVolumeName(self.get_physical_volume_name())
         self.InitializeCpp()

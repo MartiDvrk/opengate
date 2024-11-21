@@ -105,7 +105,7 @@ if __name__ == "__main__":
     
     doseActorName_IDD_d = "IDD_d"
     doseIDD = sim.add_actor("DoseActor", doseActorName_IDD_d)
-    doseIDD.output_filename = "test050-" + doseActorName_IDD_d + ".mhd"
+    doseIDD.output_filename = "test_rbe-" + RBEActorName_IDD_d + ".mhd"
     doseIDD.attached_to = phantom_off
     doseIDD.size = size
     doseIDD.spacing = spacing

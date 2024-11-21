@@ -36,9 +36,9 @@ GateWeightedEdepActor::GateWeightedEdepActor(py::dict &user_info) : GateVActor(u
   fActions.insert("EndSimulationAction");
 }
 
-void GateWeightedEdepActor::InitializeUserInput(py::dict &user_info) {
+void GateWeightedEdepActor::InitializeUserInfo(py::dict &user_info) {
   // IMPORTANT: call the base class method
-  GateVActor::InitializeUserInput(user_info);
+  GateVActor::InitializeUserInfo(user_info);
 
   fScoreIn = DictGetStr(user_info, "score_in");
   if (fScoreIn != "material") {

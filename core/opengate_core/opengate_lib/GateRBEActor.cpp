@@ -31,9 +31,9 @@ GateRBEActor::GateRBEActor(py::dict &user_info) : GateWeightedEdepActor(user_inf
   
 }
 
-void GateRBEActor::InitializeUserInput(py::dict &user_info) {
+void GateRBEActor::InitializeUserInfo(py::dict &user_info) {
   // IMPORTANT: call the base class method
-  GateWeightedEdepActor::InitializeUserInput(user_info);
+  GateWeightedEdepActor::InitializeUserInfo(user_info);
 
   fRBEmodel = DictGetStr(user_info, "rbe_model");
   fAlpha0 = DictGetDouble(user_info, "alpha_0");
