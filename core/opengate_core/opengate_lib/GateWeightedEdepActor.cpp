@@ -24,8 +24,7 @@
 #include "G4Positron.hh"
 #include "G4Proton.hh"
 
-// Mutex that will be used by thread to write in the edep/dose image
-G4Mutex SetWeightedPixelMutex = G4MUTEX_INITIALIZER;
+
 
 G4Mutex SetWeightedNbEventMutex = G4MUTEX_INITIALIZER;
 
@@ -123,7 +122,6 @@ void GateWeightedEdepActor::SteppingAction(G4Step *step) {
   // set value
   if (isInside) {
     // With mutex (thread)
-    G4AutoLock mutex(&SetWeightedPixelMutex);
     // Call the function implemented by the children class
     AddValuesToImages(step, index);
   } // else : outside the image

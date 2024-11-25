@@ -24,8 +24,9 @@ if __name__ == "__main__":
     sim.number_of_threads = 1
     sim.output_dir = paths.output
 
-    numPartSimTest = 40000 / sim.number_of_threads
+    numPartSimTest = 4000 / sim.number_of_threads
     numPartSimRef = 1e5
+    rbe_model = "mkm"
 
     # units
     m = gate.g4_units.m
@@ -93,19 +94,19 @@ if __name__ == "__main__":
     size = [50, 6, 6]
     spacing = [2.0 * mm, 10.0 * mm, 10.0 * mm]
 
-    RBEActorName_IDD_d = "RBEActorOG_d"
+    RBEActorName_IDD_d = f"RBEActor_{rbe_model}"
     RBEActor_IDD_d = sim.add_actor("RBEActor", RBEActorName_IDD_d)
     RBEActor_IDD_d.output_filename = "test_rbe-" + RBEActorName_IDD_d + ".mhd"
     RBEActor_IDD_d.attached_to = phantom_off
     RBEActor_IDD_d.size = size
     RBEActor_IDD_d.spacing = spacing
     RBEActor_IDD_d.hit_type = "random"
-    RBEActor_IDD_d.rbe_model = "mkm"
+    RBEActor_IDD_d.rbe_model = rbe_model
     RBEActor_IDD_d.lookup_table_path = paths.data / 'NIRS_MKM_reduced_data.txt'
     
     doseActorName_IDD_d = "IDD_d"
     doseIDD = sim.add_actor("DoseActor", doseActorName_IDD_d)
-    doseIDD.output_filename = "test_rbe-" + RBEActorName_IDD_d + ".mhd"
+    doseIDD.output_filename = "test_rbe-" + doseActorName_IDD_d + ".mhd"
     doseIDD.attached_to = phantom_off
     doseIDD.size = size
     doseIDD.spacing = spacing
@@ -124,17 +125,24 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------------------------------------------------------
     
     # analyze RBE dose
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
     rbe_dose_img = RBEActor_IDD_d.rbe_dose_image.image
     dose_img = doseIDD.dose.merged_data.data[0].image
-    alpha_mix_img = RBEActor_IDD_d.alpha_mix.merged_data.quotient.image
+    if rbe_model == 'mkm':
+        alpha_mix_img = RBEActor_IDD_d.alpha_mix.merged_data.quotient.image
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
+        utility.plot_img_axis(ax,alpha_mix_img,'alpha mix',axis='x')
+        
+    if rbe_model == 'lemI':
+        survival_img = RBEActor_IDD_d.survival.image
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
+        utility.plot_img_axis(ax,survival_img,'survival',axis='x')
+        
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
     utility.plot_img_axis(ax,rbe_dose_img,'RBE dose',axis='x')
     
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
     utility.plot_img_axis(ax,dose_img,'Dose',axis='x')
     
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
-    utility.plot_img_axis(ax,alpha_mix_img,'alpha mix',axis='x')
     
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(25, 10))
     rbe_img = RBEActor_IDD_d.rbe_image.image

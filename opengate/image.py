@@ -313,12 +313,7 @@ def scale_itk_image(img, scale):
     img2.CopyInformation(img)
     return img2
 
-
-def divide_itk_images(
-    img1_numerator, img2_denominator, filterVal=0, replaceFilteredVal=0
-):
-    imgarr1 = itk.array_view_from_image(img1_numerator)
-    imgarr2 = itk.array_view_from_image(img2_denominator)
+def divide_img_arrays(imgarr1, imgarr2, filterVal=0, replaceFilteredVal=0):
     if imgarr1.shape != imgarr2.shape:
         fatal(
             f"Cannot divide images of different shape. Found {imgarr1.shape} vs. {imgarr2.shape}."
@@ -328,6 +323,15 @@ def divide_itk_images(
     imgarrOut[L_filterInv] = np.divide(imgarr1[L_filterInv], imgarr2[L_filterInv])
 
     imgarrOut[np.invert(L_filterInv)] = replaceFilteredVal
+    return imgarrOut
+
+def divide_itk_images(
+    img1_numerator, img2_denominator, filterVal=0, replaceFilteredVal=0
+):
+    imgarr1 = itk.array_view_from_image(img1_numerator)
+    imgarr2 = itk.array_view_from_image(img2_denominator)
+    imgarrOut = divide_img_arrays(imgarr1, imgarr2, filterVal=filterVal, replaceFilteredVal=replaceFilteredVal)
+    
     imgarrOut = itk_image_from_array(imgarrOut)
     imgarrOut.CopyInformation(img1_numerator)
     return imgarrOut

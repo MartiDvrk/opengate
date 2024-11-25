@@ -341,6 +341,8 @@ class ActorOutputBase(GateObject):
 
     def close(self):
         if self.keep_data_in_memory is False:
+            print('close')
+            print(self.belongs_to_actor)
             self.data_per_run = {}
             self.merged_data = None
         super().close()

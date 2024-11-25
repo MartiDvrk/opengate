@@ -14,6 +14,7 @@ from ..image import (
     images_have_same_domain,
     resample_itk_image_like,
     itk_image_from_array,
+    divide_img_arrays,
 )
 from ..geometry.utility import get_transform_world_to_local
 from ..base import process_cls
@@ -1070,7 +1071,8 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
         self.cells_radiosensitivity = {'HSG': {'alpha_ref':0.764, 'beta_ref':0.0615},
                                        'Chordoma': {'alpha_ref':0.1, 'beta_ref':0.05},
                                        }
-        
+        self.rbe_image = None
+        self.rbe_dose_image = None
         
         ## -- all models will need the dose --
         self._add_user_output(ActorOutputSingleImage,"dose") # we need to initialize the image on cpp side 
@@ -1096,19 +1098,18 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
         # which is different from the generic quotient image container class:
 
         # Suffix to be appended in case a common output_filename per actor is assigned
-        self.user_output.alpha_mix.set_item_suffix(None, item="quotient")
+        self.user_output.alpha_mix.set_item_suffix('alpha_mix', item="quotient")
         self.user_output.alpha_mix.set_item_suffix("alpha_numerator", item=0)
         self.user_output.alpha_mix.set_item_suffix("alpha_denominator", item=1)
         
         # the RBE always needs both components to calculate RBE
-        self.user_output.alpha_mix.set_active(False, item=0)
-        self.user_output.alpha_mix.set_active(False, item=1)
-        self.user_output.alpha_mix.set_active(False, item="quotient")
-        
+        self.user_output.alpha_mix.set_active(False, item='all')
+        self.user_output.alpha_mix.set_write_to_disk(False, item='all')
         
         ## ------ beta mix ------
         self._add_user_output(
             ActorOutputQuotientMeanImage, "beta_mix", automatically_generate_interface=False
+
         )
         self._add_interface_to_user_output(
             UserInterfaceToActorOutputImage, "beta_mix", "beta_numerator", item=0
@@ -1119,19 +1120,18 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
         self._add_interface_to_user_output(
             UserInterfaceToActorOutputImage, "beta_mix", "beta_mix", item="quotient"
         )
-
-        self.user_output.beta_mix.set_item_suffix(None, item="quotient")
+        self.user_output.beta_mix.set_item_suffix('beta_mix', item="quotient")
         self.user_output.beta_mix.set_item_suffix("beta_numerator", item=0)
         self.user_output.beta_mix.set_item_suffix("beta_denominator", item=1)
         
-        self.user_output.beta_mix.set_active(False, item=0)
-        self.user_output.beta_mix.set_active(False, item=1)
-        self.user_output.beta_mix.set_active(False, item="quotient")
+        self.user_output.beta_mix.set_active(False, item='all')
+        self.user_output.beta_mix.set_write_to_disk(False, item='all')
         
         ## ------ survival ------
         self._add_user_output(ActorOutputSingleImage,"survival")
         self.user_output.survival.set_active(False)
         self.user_output.survival.set_item_suffix("survival")
+        self.user_output.survival.set_write_to_disk(False)
 
         self.__initcpp__()
 
@@ -1242,10 +1242,7 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
         '''
         
         if self.rbe_model == 'mkm' or self.rbe_model == 'lemIlda':
-            self.user_output.alpha_mix.set_active(True, item=0)
-            self.user_output.alpha_mix.set_active(True, item=1)
-            self.user_output.alpha_mix.set_active(True, item="quotient")
-            
+            self.user_output.alpha_mix.set_active(True, item='all')
             self.user_output.alpha_mix.set_write_to_disk(True, item="quotient")
             
             self.prepare_output_for_run("alpha_mix", run_index)
@@ -1253,9 +1250,7 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
                 "alpha_mix", run_index, self.cpp_numerator_image, self.cpp_denominator_image)
         
         if self.rbe_model == 'lemIlda':
-            self.user_output.beta_mix.set_active(True, item=0)
-            self.user_output.beta_mix.set_active(True, item=1)
-            self.user_output.beta_mix.set_active(True, item="quotient")
+            self.user_output.beta_mix.set_active(True, item='all')
             
             self.user_output.beta_mix.set_write_to_disk(True, item="quotient")
             self.prepare_output_for_run("beta_mix", run_index)
@@ -1286,6 +1281,7 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
             self.user_output.alpha_mix.store_meta_data(
                 run_index, number_of_samples=self.NbOfEvent
             )
+            self.user_output.alpha_mix.merge_data_from_runs()
         if self.rbe_model == 'lemIlda': 
             self.fetch_from_cpp_image(
                 "beta_mix", run_index, self.cpp_numerator_beta_image, self.cpp_denominator_image
@@ -1294,6 +1290,7 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
             self.user_output.beta_mix.store_meta_data(
                 run_index, number_of_samples=self.NbOfEvent
             )
+            self.user_output.beta_mix.merge_data_from_runs()
         if self.rbe_model == 'lemI':
             self.fetch_from_cpp_image(
                 "survival", run_index, self.cpp_numerator_image)
@@ -1301,7 +1298,8 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
             self.user_output.survival.store_meta_data(
                 run_index, number_of_samples=self.NbOfEvent
             )
-
+            self.user_output.survival.merge_data_from_runs()
+        
         VoxelDepositActor.EndOfRunActionMasterThread(self, run_index)
         return 0
 
@@ -1330,7 +1328,7 @@ class RBEActor(VoxelDepositActor, g4.GateRBEActor):
             
         # solve linear quadratic equation to get Dx
         rbe_dose_arr = (-alpha_ref + np.sqrt(alpha_ref**2 - 4*beta_ref*log_survival_arr))/2*beta_ref
-        rbe_arr = rbe_dose_arr / dose_img.image_array
+        rbe_arr = divide_img_arrays(rbe_dose_arr, dose_img.image_array)
         
         # create new data item for the survival image. Same metadata as the other images, but new image array
         img = itk_image_from_array(rbe_dose_arr)

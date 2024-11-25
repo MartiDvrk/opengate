@@ -27,6 +27,8 @@
 
 #include <cmath>
 
+G4Mutex SetRBEPixelMutex = G4MUTEX_INITIALIZER;
+
 GateRBEActor::GateRBEActor(py::dict &user_info) : GateWeightedEdepActor(user_info) {
   
 }
@@ -108,8 +110,11 @@ void GateRBEActor::AddValuesToImages(G4Step *step, ImageType::IndexType index){
         auto alpha_currstep = fAlpha0 + fBeta0 * table_value;
         scor_val_num = edep * alpha_currstep / CLHEP::mm;
         scor_val_den = edep / CLHEP::mm;
-        ImageAddValue<ImageType>(cpp_numerator_image, index, scor_val_num);
-        ImageAddValue<ImageType>(cpp_denominator_image, index, scor_val_den);
+        G4AutoLock mutex(&SetRBEPixelMutex);
+        {
+            ImageAddValue<ImageType>(cpp_numerator_image, index, scor_val_num);
+            ImageAddValue<ImageType>(cpp_denominator_image, index, scor_val_den);
+        }
     }
     
     if (fRBEmodel == "lemIlda"){
@@ -139,9 +144,10 @@ void GateRBEActor::AddValuesToImages(G4Step *step, ImageType::IndexType index){
         scor_val_num = exp(-NlethStep);
         ImageAddValue<ImageType>(cpp_numerator_image, index, scor_val_num);
     }
-    
-    ImageAddValue<ImageType>(cpp_dose_image, index, d_step);
-
+    G4AutoLock mutex(&SetRBEPixelMutex);
+    {
+        ImageAddValue<ImageType>(cpp_dose_image, index, d_step);
+    }
     // std::cout << "Index: " << index << "is written in images. " << std::endl;
 
   } // else : outside the image
