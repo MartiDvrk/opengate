@@ -48,7 +48,33 @@ def test_ok(is_ok=False, exceptions=None):
         print(s)
         sys.exit(-1)
 
-
+def write_stats_txt_gate_style(stats, filepath):
+    output = stats.user_output.stats
+    counts = output.merged_data
+    with open(filepath, 'w') as f:
+        f.write(f'''
+# NumberOfRun    = {counts.runs}
+# NumberOfEvents = {counts.events}
+# NumberOfTracks = {counts.tracks}
+# NumberOfSteps  = {counts.steps}
+# NumberOfGeometricalSteps  = 
+# NumberOfPhysicalSteps     = 
+# ElapsedTime           = {counts.duration}
+# ElapsedTimeWoInit     = {counts.duration}
+# StartDate             = 
+# EndDate               = 
+# StartSimulationTime        = 0
+# StopSimulationTime         = 1
+# CurrentSimulationTime      = 8.99658e-06
+# VirtualStartSimulationTime = 0
+# VirtualStopSimulationTime  = 1
+# ElapsedSimulationTime      = 8.99658e-06
+# PPS (Primary per sec)      = {output.pps}
+# TPS (Track per sec)        = {output.tps}
+# SPS (Step per sec)         = {output.sps}
+                ''')
+                
+                
 def read_stat_file(filename, encoder=None):
     if encoder == "json":
         return read_stat_file_json(filename)
