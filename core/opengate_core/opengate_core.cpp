@@ -588,12 +588,9 @@ PYBIND11_MODULE(opengate_core, m) {
   init_GateTLEDoseActor(m);
   init_GateFluenceActor(m);
   init_GateLETActor(m);
-<<<<<<< HEAD
   init_GateRBEActor(m);
   init_GateEmCalculatorActor(m);
-=======
   init_GateProductionAndStoppingActor(m);
->>>>>>> 2c08eb8e4d5adf2d33846bd0dae134f7d7d8d01f
   init_GateSimulationStatisticsActor(m);
   init_GatePhaseSpaceActor(m);
   // init_GateComptonSplittingActor(m);
