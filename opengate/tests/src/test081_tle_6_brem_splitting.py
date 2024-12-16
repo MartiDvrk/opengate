@@ -3,11 +3,8 @@
 import opengate as gate
 from opengate.tests import utility
 from opengate.tests.src.test081_tle_helpers import (
-    add_waterbox,
     add_simple_waterbox,
     add_source,
-    plot_pdd,
-    compare_pdd,
 )
 import sys
 import numpy as np
@@ -102,7 +99,7 @@ def main(argv):
 
     # add tle dose actor
     tle_dose_actor = sim.add_actor("TLEDoseActor", "tle_dose_actor")
-    tle_dose_actor.output_filename = "test081_tle.mhd"
+    tle_dose_actor.output_filename = "test081_tle_6_brem_split.mhd"
     tle_dose_actor.attached_to = waterbox
     tle_dose_actor.dose_uncertainty.active = True
     tle_dose_actor.dose.active = True
@@ -114,7 +111,7 @@ def main(argv):
 
     # add conventional dose actor
     dose_actor = sim.add_actor("DoseActor", "dose_actor")
-    dose_actor.output_filename = "test081.mhd"
+    dose_actor.output_filename = "test081_6_brem_split.mhd"
     dose_actor.attached_to = waterbox
     dose_actor.dose_uncertainty.active = True
     dose_actor.dose.active = True
@@ -138,11 +135,11 @@ def main(argv):
     f1_bis = dose_actor.dose_uncertainty.get_output_path()
     f2_bis = tle_dose_actor.dose_uncertainty.get_output_path()
 
-    is_ok = test(f1, f2, f1_bis, f2_bis)
-    utility.test_ok(is_ok)
-
     # print results at the end
     print(stats)
+
+    is_ok = test(f1, f2, f1_bis, f2_bis)
+    utility.test_ok(is_ok)
 
 
 if __name__ == "__main__":

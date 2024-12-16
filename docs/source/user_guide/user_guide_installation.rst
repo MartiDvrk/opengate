@@ -7,7 +7,7 @@ Install GATE with:
 
     pip install opengate
 
-Then, you can create a simulation using the `opengate` module (see below). For **developers**, please check the `developer guide <developer_guide>`_ for the developer installation.
+Then, you can create a simulation using the `opengate` module (see below). For **developers**, please check the `developer guide <../developer_guide/index.html>`_ for the developer installation.
 
 .. tip:: We highly recommend creating a specific Python environment to 1) ensure all dependencies are handled properly, and 2) avoid mixing with your other Python modules. For example, you can use `venv`. Once the environment is created, activate it:
 
@@ -49,4 +49,7 @@ For some systems (clusters or older computers), the main `opengate_core` cannot 
     pip install --force-reinstall "opengate[novis]"
 
 Note that the option `--force-reinstall` is only needed if you already installed the conventional `opengate` before.
+
+
+Additional help : `"Installing Gate 10 in Ubuntu 22 in WSL2 in Windows 11 AMD64" <https://drive.google.com/file/d/1lQW2u-935ev0l5oqt5MUDaLGhYRlanVB/view?usp=drive_link>`_
 
