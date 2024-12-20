@@ -59,8 +59,8 @@ def write_stats_txt_gate_style(stats, filepath):
 # NumberOfSteps  = {counts.steps}
 # NumberOfGeometricalSteps  = 
 # NumberOfPhysicalSteps     = 
-# ElapsedTime           = {counts.duration}
-# ElapsedTimeWoInit     = {counts.duration}
+# ElapsedTime           = {counts.duration/g4_units.s}
+# ElapsedTimeWoInit     = {counts.duration/g4_units.s}
 # StartDate             = 
 # EndDate               = 
 # StartSimulationTime        = 0
